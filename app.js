@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.26.8";
+const APP_VERSION = "2.27.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -34,6 +34,9 @@ const DIFFICULTY_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
 const SECTION_OPTIONS = ["Company Story", "Vision", "Mission", "Identity & Essences", "Core Values"];
 /* Kategori tamu. Sama dengan GUEST_CATEGORIES di backend (Code.gs). Kalau berubah, ubah keduanya. */
 const GUEST_CATEGORIES = ["Birthday", "Preference", "VIP", "Farewell", "Celebration", "Achievement", "Complaint"];
+/* Tipe bulletin. Sama dengan dropdown Type di sheet. Warna: green = event, yellow = pemberitahuan, lainnya abu-abu. */
+const BULLETIN_TYPES = ["Meeting", "Internal Information"];
+const BULLETIN_COLORS = { "Meeting": "green", "Internal Information": "yellow" };
 
 /* Start hour of each shift. A shift is "now" from its start until the next shift starts. */
 const SHIFT_START = { "M6": "06:00", "M8": "08:00", "M11": "11:00", "MD12": "12:00", "E2": "14:30" };
@@ -59,7 +62,7 @@ const EDIT_FIELDS = {
   ],
   bulletin: [
     { key: "date",        label: "Date", input: "date" },
-    { key: "type",        label: "Type", src: true },
+    { key: "type",        label: "Type", options: BULLETIN_TYPES },
     { key: "title",       label: "Title" },
     { key: "description", label: "Description", input: "multi" },
     { key: "image",       label: "Photo", input: "photo" },
@@ -138,6 +141,11 @@ let appData = null;
 let activeTab = "home";
 let searchText = "";
 let guestsLanding = false;
+let bulletinLanding = false;
+let bulletinView = "list";
+let bulletinMonth = null;   // { y, m } bulan yang sedang dilihat di kalender
+let bulletinDay = null;     // "YYYY-MM-DD" hari yang dipilih di kalender
+let bulletinShown = GUESTS_PAGE_SIZE;
 const GUESTS_PAGE_SIZE = 12;
 let guestFilter = { q: "", cat: -1, sort: "newest", view: "grid", status: "all", shown: GUESTS_PAGE_SIZE };
 let formState = null;   // { mode: "add" | "edit", sheetKey, row, original }
@@ -402,6 +410,7 @@ function renderTabbar() {
 function showTab(key) {
   activeTab = key;
   guestsLanding = false;
+  bulletinLanding = false;
   searchText = "";
   renderTabbar();
   renderTab();
@@ -425,6 +434,7 @@ function renderTab() {
 
 function renderActiveView() {
   if (guestsLanding) return viewGuestsLanding();
+  if (bulletinLanding) return viewBulletinLanding();
 
   let html = "";
   if (activeTab === "home")          html = viewHome();
@@ -463,7 +473,8 @@ function viewHome() {
         '<button class="ghost small-link" type="button" onclick="openGuestsLanding()">View all</button>') +
       homeCol("Upsell Today", "upsell", upsellPanel()) +
       homeCol("Staff Bulletin", "bulletin",
-        news.length ? news.map(bulletinCard).join("") : emptyState("No active bulletin yet.")) +
+        news.length ? news.map(bulletinCard).join("") : emptyState("No active bulletin yet."),
+        '<button class="ghost small-link" type="button" onclick="openBulletinLanding()">View all</button>') +
     '</div>';
 }
 
@@ -906,6 +917,147 @@ function guestView(mode) {
 function guestMore() {
   guestFilter.shown += GUESTS_PAGE_SIZE;
   renderTab();
+}
+
+/* ---------- STAFF BULLETIN: halaman lengkap (kalender dan daftar) ---------- */
+
+const BULLETIN_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const BULLETIN_WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+function openBulletinLanding() {
+  bulletinLanding = true;
+  bulletinView = window.matchMedia("(min-width: 900px)").matches ? "calendar" : "list";
+  bulletinMonth = null;
+  bulletinDay = null;
+  bulletinShown = GUESTS_PAGE_SIZE;
+  renderTab();
+  window.scrollTo(0, 0);
+}
+
+/** Bulletin aktif saja, terbaru di atas. Dipakai kalender dan daftar. */
+function activeBulletins() {
+  return newestFirst(appData.bulletin.filter(isActive));
+}
+
+function bulletinColor(type) {
+  return BULLETIN_COLORS[type] || "neutral";
+}
+
+function viewBulletinLanding() {
+  return '<div class="gl-head">' +
+      '<button class="ghost" type="button" onclick="showTab(\'home\')">← Back</button>' +
+      '<h2 class="section-title">Staff Bulletin</h2>' +
+      addBtn("bulletin", "+ Add") +
+    '</div>' +
+    '<div class="bl-legend">' + BULLETIN_TYPES.map(t =>
+      '<span class="bl-tag ' + bulletinColor(t) + '">' + esc(t) + '</span>').join("") + '</div>' +
+    '<div class="gl-toolbar">' +
+      '<div class="seg" role="group" aria-label="View">' +
+        [["calendar", "Calendar"], ["list", "List"]].map(o =>
+          '<button type="button" class="' + (bulletinView === o[0] ? "on" : "") + '" onclick="bulletinSetView(\'' + o[0] + '\')">' + o[1] + '</button>'
+        ).join("") +
+      '</div>' +
+    '</div>' +
+    (bulletinView === "calendar" ? bulletinCalendarHtml() : bulletinListHtml());
+}
+
+function bulletinSetView(mode) {
+  bulletinView = mode;
+  renderTab();
+}
+
+function bulletinCalendarHtml() {
+  const now = new Date();
+  if (!bulletinMonth) bulletinMonth = { y: now.getFullYear(), m: now.getMonth() };
+  const y = bulletinMonth.y;
+  const m = bulletinMonth.m;
+  const todayIso = isoDate(now);
+
+  const byDay = {};
+  activeBulletins().forEach(r => {
+    const iso = isoFromSheetDate(r.date);
+    if (iso) (byDay[iso] = byDay[iso] || []).push(r);
+  });
+
+  const lead = (new Date(y, m, 1).getDay() + 6) % 7;   // minggu mulai Senin
+  const days = new Date(y, m + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < lead; i++) cells.push('<span class="bc-cell bc-empty"></span>');
+  for (let d = 1; d <= days; d++) {
+    const iso = y + "-" + pad2(m + 1) + "-" + pad2(d);
+    const list = byDay[iso] || [];
+    const dots = Array.from(new Set(list.map(r => bulletinColor(r.type))))
+      .map(c => '<i class="bc-dot ' + c + '"></i>').join("");
+    const classes = "bc-cell" + (iso === todayIso ? " bc-today" : "") + (iso === bulletinDay ? " bc-picked" : "");
+    cells.push('<button type="button" class="' + classes + '"' + (list.length ? ' onclick="bulletinPick(\'' + iso + '\')"' : ' disabled') + '>' +
+      '<span>' + d + '</span><span class="bc-dots">' + dots + '</span></button>');
+  }
+
+  const dayItems = bulletinDay ? (byDay[bulletinDay] || []) : [];
+  return '<div class="bc-head">' +
+      '<button class="ghost small" type="button" aria-label="Previous month" onclick="bulletinMonthStep(-1)">‹</button>' +
+      '<strong>' + BULLETIN_MONTHS[m] + ' ' + y + '</strong>' +
+      '<button class="ghost small" type="button" aria-label="Next month" onclick="bulletinMonthStep(1)">›</button>' +
+    '</div>' +
+    '<div class="bc-week">' + BULLETIN_WEEKDAYS.map(w => '<span>' + w + '</span>').join("") + '</div>' +
+    '<div class="bc-grid">' + cells.join("") + '</div>' +
+    (bulletinDay
+      ? '<div class="bc-day-title">' + esc(formatSheetDate(new Date(bulletinDay + "T00:00:00"))) + '</div>' +
+        (dayItems.length ? dayItems.map(bulletinItem).join("") : emptyState("Nothing on this day."))
+      : '<p class="muted small bc-hint">Tap a date with a dot to see its items.</p>');
+}
+
+function bulletinMonthStep(delta) {
+  const base = bulletinMonth || { y: new Date().getFullYear(), m: new Date().getMonth() };
+  const d = new Date(base.y, base.m + delta, 1);
+  bulletinMonth = { y: d.getFullYear(), m: d.getMonth() };
+  bulletinDay = null;
+  renderTab();
+}
+
+function bulletinPick(iso) {
+  bulletinDay = bulletinDay === iso ? null : iso;
+  renderTab();
+}
+
+function bulletinListHtml() {
+  const items = activeBulletins();
+  if (!items.length) return emptyState("No active bulletin yet.");
+  const shown = items.slice(0, bulletinShown);
+  return '<div class="bl-list">' + shown.map(bulletinItem).join("") + '</div>' +
+    (items.length > shown.length
+      ? '<div class="gl-more"><button class="btn outline" type="button" onclick="bulletinMore()">Show more</button></div>'
+      : '');
+}
+
+function bulletinMore() {
+  bulletinShown += GUESTS_PAGE_SIZE;
+  renderTab();
+}
+
+/** Satu item bulletin, dipakai di kalender (per hari) dan di daftar. Read more hanya membuka teks di tempat. */
+function bulletinItem(r) {
+  const text = String(r.description || "");
+  const more = text.length > 80;
+  const color = bulletinColor(r.type);
+  return '<div class="bl-item ' + color + '">' +
+    '<div class="bl-meta"><span class="bl-tag ' + color + '">' + esc(r.type || "Info") + '</span>' +
+      '<span class="small muted">' + esc(r.date) + '</span></div>' +
+    '<div class="note-title">' + esc(r.title) + '</div>' +
+    (text
+      ? '<p class="bl-text"><span class="bl-short">' + esc(clipText(text, 80)) + '</span><span class="bl-full">' + esc(text) + '</span></p>'
+      : '') +
+    '<div class="bl-actions">' +
+      (more ? '<button class="more" type="button" onclick="toggleBulletinText(this)">Read more</button>' : '') +
+      editBtn("bulletin", r) +
+    '</div>' +
+  '</div>';
+}
+
+function toggleBulletinText(btn) {
+  const item = btn.closest(".bl-item");
+  const open = item.classList.toggle("open");
+  btn.innerText = open ? "Show less" : "Read more";
 }
 
 function viewAbout() {

@@ -643,3 +643,43 @@ ul.plain li:last-child { border-bottom: 0; }
   .gl-search { flex: 1 1 100%; }
   .gl-sort, .gl-status { flex: 1 1 0; min-width: 0; }
 }
+
+/* Staff Bulletin: tipe dan warna */
+.green { --tag: #8FAA4B; --tag-bg: rgba(143, 170, 75, 0.16); }
+.yellow { --tag: #E0B43A; --tag-bg: rgba(224, 180, 58, 0.16); }
+.neutral { --tag: var(--muted); --tag-bg: var(--elevated); }
+.bl-legend { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
+.bl-tag {
+  display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; padding: 3px 9px; border-radius: 999px;
+  color: var(--tag, var(--text)); background: var(--tag-bg, var(--elevated)); border: 1px solid var(--tag, var(--border));
+}
+.bl-list { display: flex; flex-direction: column; gap: 10px; }
+.bl-item {
+  background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--tag, var(--border));
+  border-radius: var(--radius); padding: 12px;
+}
+.bl-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 4px; }
+.bl-text { margin: 6px 0 0; font-size: 14px; line-height: 1.45; color: var(--muted); }
+.bl-full { display: none; }
+.bl-item.open .bl-short { display: none; }
+.bl-item.open .bl-full { display: inline; }
+.bl-actions { display: flex; gap: 10px; align-items: center; margin-top: 6px; flex-wrap: wrap; }
+.bl-actions .more, .bl-actions .edit-btn { margin: 0; }
+
+.bc-head { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 10px; }
+.bc-head strong { font-size: 16px; }
+.bc-week, .bc-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.bc-week { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 4px; }
+.bc-cell {
+  min-height: 52px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 4px; font: inherit; font-size: 13px;
+  cursor: pointer;
+}
+.bc-cell[disabled] { opacity: 0.35; cursor: default; }
+.bc-empty { visibility: hidden; }
+.bc-today { border-color: var(--accent); }
+.bc-picked { background: var(--text); color: var(--bg); }
+.bc-dots { display: flex; gap: 3px; min-height: 6px; }
+.bc-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--tag, var(--muted)); display: block; }
+.bc-day-title { font-weight: 700; margin: 16px 0 8px; }
+.bc-hint { margin-top: 14px; }
