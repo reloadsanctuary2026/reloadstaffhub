@@ -4,6 +4,16 @@ Setiap update frontend menaikkan versi di `app.js` (`APP_VERSION`), `style.css?v
 
 Versi backend (`Code.gs`) dicatat terpisah di bawah.
 
+## 2.14.0
+- Home: Upsell Today, Important Info, dan Staff Bulletin dalam satu baris. Tiga kolom di desktop, dua kolom di tablet, satu kolom (urut: Upsell, Info, Bulletin) di HP.
+- Tombol Edit dan Tambah lebih besar di HP, supaya mudah disentuh.
+
+## 2.13.0
+- Upsell Today sekarang per item: satu baris per item dengan kolom Tipe, Sesi, Shift, Item, Target, Satuan, Status.
+- Tampilan Upsell dikelompokkan per sesi (Morning, Afternoon, Evening), lalu kalimat upsell, lalu aturan.
+- Field Target hanya menerima angka.
+- Backend 2.9.0: skema tab `11_UpsellToday` berubah (lihat kolom di atas).
+
 ## 2.12.0
 - Tab sheet baru `11_UpsellToday` (kolom: Date, Title, Description, Status). Upsell Today tidak lagi dicampur dengan Important Info.
 - Home dua kolom: Upsell Today di kiri, Important Info di kanan. Di HP keduanya tersusun vertikal.

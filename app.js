@@ -1,10 +1,10 @@
 /****************************************
  * RELOAD STAFF HUB — FRONTEND (GitHub Pages)
- * Version : 2.12.0 (tab Upsell Today terpisah, Home dua kolom)
+ * Version : 2.14.0 (Home tiga kolom di desktop, satu kolom di HP)
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.12.0";
+const APP_VERSION = "2.14.0";
 
 const TABS = [
   { key: "home",     label: "Home" },
@@ -26,6 +26,8 @@ const TABS = [
  *   src: true = pilihan diambil dari nilai yang sudah ada di sheet, plus "+ Baru…"
  */
 const STATUS_OPTIONS = ["ACTIVE", "INACTIVE"];
+const UPSELL_TIPE = ["Item", "Kalimat", "Aturan"];
+const SESI_ORDER = ["Morning", "Afternoon", "Evening"];
 const ALLERGEN_OPTIONS = ["Gluten", "Milk", "Egg", "Nut", "Seafood", "Soy"];
 const DIFFICULTY_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
 const SECTION_OPTIONS = ["Company Story", "Vision", "Mission", "Identity & Essences", "Core Values"];
@@ -41,10 +43,14 @@ const MENU_FIELDS = [
 
 const EDIT_FIELDS = {
   upsell: [
-    { key: "date",        label: "Tanggal", input: "date" },
-    { key: "title",       label: "Judul" },
-    { key: "description", label: "Deskripsi", input: "multi" },
-    { key: "status",      label: "Status", options: STATUS_OPTIONS }
+    { key: "date",     label: "Tanggal", input: "date" },
+    { key: "tipe",     label: "Tipe", options: UPSELL_TIPE },
+    { key: "sesi",     label: "Sesi", options: SESI_ORDER },
+    { key: "shift",    label: "Shift (contoh: M6 & M8)", src: true },
+    { key: "item",     label: "Item / kalimat / aturan" },
+    { key: "target",   label: "Target", input: "number" },
+    { key: "satuan",   label: "Satuan (contoh: portion/server)", src: true },
+    { key: "status",   label: "Status", options: STATUS_OPTIONS }
   ],
   importantInfo: [
     { key: "date",        label: "Tanggal", input: "date" },
@@ -343,7 +349,6 @@ function renderTab() {
 
 function viewHome() {
   const info = appData.importantInfo.find(isActive);
-  const upsell = appData.upsell.find(isActive);
   const quotes = appData.inspiration.filter(r => r.greeting === timeOfDay());
   const quote = quotes.length ? quotes[new Date().getDate() % quotes.length] : null;
   const news = appData.bulletin.filter(showItem);
@@ -359,20 +364,64 @@ function viewHome() {
       addBtn("inspiration", "+ Quote") +
     '</section>' +
 
-    '<div class="grid two">' +
-      '<div>' + sectionHead("Upsell Today", "upsell") +
-        (upsell ? highlightCard(upsell, "upsell") : emptyState("Tidak ada upsell aktif.")) + '</div>' +
-      '<div>' + sectionHead("Important Info", "importantInfo") +
-        (info ? highlightCard(info, "importantInfo") : emptyState("Tidak ada info aktif.")) + '</div>' +
-    '</div>' +
-
-    sectionHead("Staff Bulletin", "bulletin") +
-    (news.length
-      ? listWithInactive(news, bulletinCard)
-      : emptyState("Belum ada bulletin aktif."));
+    '<div class="home-grid">' +
+      homeCol("Upsell Today", "upsell", upsellPanel()) +
+      homeCol("Important Info", "importantInfo",
+        info ? highlightCard(info, "importantInfo") : emptyState("Tidak ada info aktif.")) +
+      homeCol("Staff Bulletin", "bulletin",
+        news.length ? listWithInactive(news, bulletinCard) : emptyState("Belum ada bulletin aktif.")) +
+    '</div>';
 }
 
-/** Kartu sorotan (Upsell Today dan Important Info). */
+/** Satu kolom di Home: judul + tombol tambah, lalu isinya. */
+function homeCol(title, sheetKey, body) {
+  return '<section class="home-col">' + sectionHead(title, sheetKey) + body + '</section>';
+}
+
+/**
+ * Upsell: item dikelompokkan per sesi, lalu kalimat, lalu aturan. Hanya baris ACTIVE.
+ * Baris tanpa Tipe dianggap Item.
+ */
+function upsellPanel() {
+  const rows = appData.upsell.filter(isActive);
+  if (!rows.length) return emptyState("Tidak ada upsell aktif.");
+
+  const isItem = r => !r.tipe || r.tipe === "Item";
+  const items = rows.filter(isItem);
+  const extraSesi = items.map(r => r.sesi)
+    .filter((x, i, arr) => x && SESI_ORDER.indexOf(x) === -1 && arr.indexOf(x) === i);
+  const sesiList = SESI_ORDER.concat(extraSesi);
+
+  const sesiHtml = sesiList.map(sesi => {
+    const group = items.filter(r => r.sesi === sesi);
+    if (!group.length) return "";
+    const shift = group[0].shift;
+    return '<div class="card upsell-session">' +
+      '<div class="row-between"><strong>' + esc(sesi) + '</strong>' +
+      (shift ? '<span class="badge">' + esc(shift) + '</span>' : '') + '</div>' +
+      group.map(r =>
+        '<div class="upsell-line"><span>' + esc(r.item) + '</span>' +
+        '<span class="price">' + esc(r.target) + ' ' + esc(r.satuan) + '</span>' +
+        editBtn("upsell", r) + '</div>'
+      ).join("") +
+    '</div>';
+  }).join("");
+
+  const kalimat = rows.filter(r => r.tipe === "Kalimat");
+  const aturan = rows.filter(r => r.tipe === "Aturan");
+
+  return sesiHtml +
+    (kalimat.length
+      ? '<div class="card"><div class="caption-label">Kalimat upsell</div><ul class="plain">' +
+        kalimat.map(r => '<li>' + esc(r.item) + editBtn("upsell", r) + '</li>').join("") + '</ul></div>'
+      : '') +
+    aturan.map(r =>
+      '<div class="card highlight"><div class="caption-label">Aturan</div><strong>' + esc(r.item) + '</strong>' +
+      editBtn("upsell", r) + '</div>'
+    ).join("");
+}
+
+/** Kartu sorotan (Important Info). */
 function highlightCard(r, sheetKey) {
   return '<div class="card highlight"><div class="caption-label">' + esc(r.date) + '</div>' +
     '<strong>' + esc(r.title) + '</strong>' +
@@ -716,6 +765,7 @@ function fieldInput(sheetKey, f, v) {
   if (f.input === "today") return '<input class="input" type="text" readonly ' + key + ' value="' + esc(v) + '">';
   if (f.input === "date") return '<input class="input" type="date" ' + key + ' value="' + esc(isoFromSheetDate(v)) + '">';
   if (f.input === "price") return '<input class="input" type="number" inputmode="numeric" min="0" step="500" ' + key + ' value="' + esc(v.replace(/\D/g, "")) + '">';
+  if (f.input === "number") return '<input class="input" type="number" inputmode="numeric" min="0" ' + key + ' value="' + esc(v) + '">';
   if (f.input === "phone") return '<input class="input" type="tel" inputmode="numeric" ' + key + ' value="' + esc(v) + '" placeholder="628...">';
   if (f.input === "photo" || f.input === "pdf") return uploadHtml(f, v);
   if (f.input === "url") return '<input class="input" type="url" ' + key + ' value="' + esc(v) + '" placeholder="https://...">';
