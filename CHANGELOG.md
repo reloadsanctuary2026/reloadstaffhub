@@ -4,6 +4,15 @@ Setiap update frontend menaikkan versi di `app.js` (`APP_VERSION`), `style.css?v
 
 Versi backend (`Code.gs`) dicatat terpisah di bawah.
 
+## 2.16.0
+- Foto dan jabatan karyawan diambil dari HR Sheet (kolom Photo dan Job Title/Position). Kalau foto diganti di HR, berubah di app dalam 10 menit.
+- Header: judul lebih besar, profil di kanan berisi foto, nama, dan jabatan. Tier tidak ditampilkan lagi.
+- Sapaan di Home dikecilkan.
+- Important Info dihapus dari app.
+- Home: Our Guests, Upsell Today, dan Staff Bulletin dalam satu baris (tiga kolom di desktop, tersusun di HP).
+- Tab: Home dengan ikon rumah. Label: Food Bible, Beverage Bible, SOP, Our Teams, Reload Academy, About Reload. Tab Guests dipindah ke Home sebagai Our Guests.
+- Backend 2.11.0: membaca kolom Photo dan Job Title/Position dari HR (opsional), tabel `01_ImportantInfo` tidak dibaca lagi.
+
 ## 2.15.0
 - Upsell tidak lagi pakai kolom Status. Yang tampil di Home hanya baris dengan tanggal hari ini.
 - Kalau tidak ada baris untuk hari ini, Upsell menampilkan "Tidak ada upsell untuk hari ini."

@@ -1,20 +1,21 @@
 /****************************************
  * RELOAD STAFF HUB — FRONTEND (GitHub Pages)
- * Version : 2.15.0 (Upsell tanpa Status, tampil per tanggal hari ini)
+ * Version : 2.16.0 (Home: Our Guests, Upsell, Bulletin; foto dan jabatan dari HR; tab baru)
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.15.0";
+const APP_VERSION = "2.16.0";
+
+const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
 const TABS = [
-  { key: "home",     label: "Home" },
-  { key: "food",     label: "Food" },
-  { key: "beverage", label: "Beverage" },
+  { key: "home",     label: "Home", icon: HOME_ICON },
+  { key: "food",     label: "Food Bible" },
+  { key: "beverage", label: "Beverage Bible" },
   { key: "sop",      label: "SOP" },
-  { key: "teams",    label: "Teams" },
-  { key: "academy",  label: "Academy" },
-  { key: "guests",   label: "Guests" },
-  { key: "about",    label: "About" }
+  { key: "teams",    label: "Our Teams" },
+  { key: "academy",  label: "Reload Academy" },
+  { key: "about",    label: "About Reload" }
 ];
 
 /*
@@ -50,12 +51,6 @@ const EDIT_FIELDS = {
     { key: "item",     label: "Item / kalimat / aturan" },
     { key: "target",   label: "Target", input: "number" },
     { key: "satuan",   label: "Satuan (contoh: portion/server)", src: true }
-  ],
-  importantInfo: [
-    { key: "date",        label: "Tanggal", input: "date" },
-    { key: "title",       label: "Judul" },
-    { key: "description", label: "Deskripsi", input: "multi" },
-    { key: "status",      label: "Status", options: STATUS_OPTIONS }
   ],
   bulletin: [
     { key: "date",        label: "Tanggal", input: "date" },
@@ -115,7 +110,6 @@ const EDIT_FIELDS = {
 
 const SHEET_LABELS = {
   upsell: "Upsell Today",
-  importantInfo: "Important Info",
   bulletin: "Staff Bulletin",
   food: "Food Bible",
   beverage: "Beverage Bible",
@@ -196,6 +190,14 @@ window.addEventListener("load", async function () {
 
 /* ---------- LOGIN ---------- */
 
+/** Foto dari HR kalau ada, kalau tidak inisial nama. */
+function renderAvatar(photo) {
+  const el = document.getElementById("userAvatar");
+  el.innerHTML = photo
+    ? '<img src="' + esc(photo) + '" alt="">'
+    : esc(initials(currentName));
+}
+
 function hideBoot() {
   document.getElementById("boot").classList.add("hidden");
 }
@@ -214,9 +216,8 @@ function enterApp(user) {
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("appShell").classList.remove("hidden");
   document.getElementById("userName").innerText = currentName;
-  document.getElementById("userTier").innerText =
-    (user.tier || "") + " · " + (currentCanEdit ? "Mode edit" : "Mode baca");
-  document.getElementById("userInitials").innerText = initials(currentName);
+  document.getElementById("userTier").innerText = user.jobTitle || "";
+  renderAvatar(user.photo);
   renderTabbar();
   loadData();
 }
@@ -311,8 +312,9 @@ function handleApiError(e) {
 
 function renderTabbar() {
   document.getElementById("tabbar").innerHTML = TABS.map(function (t) {
+    const inner = t.icon ? '<span class="nav-icon">' + t.icon + '</span>' : esc(t.label);
     return '<button class="tab' + (t.key === activeTab ? ' active' : '') +
-      '" type="button" onclick="showTab(\'' + t.key + '\')">' + t.label + '</button>';
+      '" type="button" aria-label="' + esc(t.label) + '" onclick="showTab(\'' + t.key + '\')">' + inner + '</button>';
   }).join("");
 }
 
@@ -338,7 +340,6 @@ function renderTab() {
   else if (activeTab === "sop")      html = viewSearchable("sop");
   else if (activeTab === "teams")    html = viewTeams();
   else if (activeTab === "academy")  html = viewSearchable("academy");
-  else if (activeTab === "guests")   html = viewGuests();
   else if (activeTab === "about")    html = viewAbout();
 
   app.innerHTML = html;
@@ -347,9 +348,9 @@ function renderTab() {
 /* ---------- HOME ---------- */
 
 function viewHome() {
-  const info = appData.importantInfo.find(isActive);
   const quotes = appData.inspiration.filter(r => r.greeting === timeOfDay());
   const quote = quotes.length ? quotes[new Date().getDate() % quotes.length] : null;
+  const guests = appData.guests.filter(showItem);
   const news = appData.bulletin.filter(showItem);
 
   return '<section class="hero">' +
@@ -364,9 +365,9 @@ function viewHome() {
     '</section>' +
 
     '<div class="home-grid">' +
+      homeCol("Our Guests", "guests",
+        guests.length ? listWithInactive(guests, guestCard) : emptyState("Tidak ada catatan tamu aktif.")) +
       homeCol("Upsell Today", "upsell", upsellPanel()) +
-      homeCol("Important Info", "importantInfo",
-        info ? highlightCard(info, "importantInfo") : emptyState("Tidak ada info aktif.")) +
       homeCol("Staff Bulletin", "bulletin",
         news.length ? listWithInactive(news, bulletinCard) : emptyState("Belum ada bulletin aktif.")) +
     '</div>';
@@ -418,14 +419,6 @@ function upsellPanel() {
       '<div class="card highlight"><div class="caption-label">Aturan</div><strong>' + esc(r.item) + '</strong>' +
       editBtn("upsell", r) + '</div>'
     ).join("");
-}
-
-/** Kartu sorotan (Important Info). */
-function highlightCard(r, sheetKey) {
-  return '<div class="card highlight"><div class="caption-label">' + esc(r.date) + '</div>' +
-    '<strong>' + esc(r.title) + '</strong>' +
-    '<p class="pre muted">' + esc(r.description) + '</p>' +
-    editBtn(sheetKey, r) + '</div>';
 }
 
 function bulletinCard(r) {
@@ -580,14 +573,6 @@ function viewTeams() {
           '</div>'
         ).join("")
       : emptyState("Belum ada data tim."));
-}
-
-function viewGuests() {
-  const rows = appData.guests.filter(showItem);
-  return sectionHead("Guest Notes", "guests") +
-    (rows.length
-      ? listWithInactive(rows, guestCard)
-      : emptyState("Tidak ada catatan tamu aktif."));
 }
 
 function guestCard(r) {
