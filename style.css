@@ -1,19 +1,20 @@
-/* Reload Staff Hub — frontend v2.6.0 */
+/* Reload Staff Hub — frontend v2.7.0 (palet brand Reload, font Poppins) */
 
 :root {
-  --bg: #0b0b0c;
-  --surface: #141416;
-  --elevated: #1c1c1f;
-  --border: rgba(255, 255, 255, 0.08);
-  --text: #f5f3ef;
-  --muted: #8e8a84;
-  --accent: #AA7655;
-  --accent-soft: rgba(170, 118, 85, 0.14);
-  --warn: #E0B070;
-  --danger: #C2473F;
-  --err: #FF8A80;
+  --bg: #030303;            /* Rich Black */
+  --surface: #131313;       /* Chinese Black */
+  --elevated: #302F2F;      /* Dark Charcoal */
+  --border: rgba(222, 202, 184, 0.12);
+  --text: #DECAB8;          /* Bone */
+  --muted: #756D64;         /* Shade of Sandstone */
+  --accent: #AA7655;        /* French Beige */
+  --accent-soft: rgba(170, 118, 85, 0.16);
+  --danger: #800020;        /* Burgundy */
+  --success: #728639;       /* Shade of Wasabi */
+  --alert-bg: #2A1E04;      /* Zinnwaldite */
+  --err: #D9695F;
   --radius: 16px;
-  --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
 }
 
 * { box-sizing: border-box; }
@@ -25,7 +26,7 @@ body {
     radial-gradient(1200px 500px at 10% -10%, rgba(170, 118, 85, 0.12), transparent 60%),
     var(--bg);
   color: var(--text);
-  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: "Poppins", ui-rounded, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
   font-size: 15px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
@@ -59,14 +60,13 @@ h1, h2, h3 { margin: 0; letter-spacing: -0.01em; }
 .field-label { display: block; font-size: 12px; color: var(--muted); margin: 14px 0 6px; text-transform: uppercase; letter-spacing: 0.08em; }
 
 .logo {
-  width: 44px; height: 44px; border-radius: 12px;
-  display: inline-flex; align-items: center; justify-content: center;
-  background: linear-gradient(135deg, #C4906C, #8A5A3D);
-  color: #fff; font-weight: 800; font-size: 20px;
-  box-shadow: 0 6px 18px rgba(170, 118, 85, 0.35);
+  width: 44px; height: 44px;
+  display: block;
+  color: var(--text);
   margin-bottom: 16px;
 }
-.logo.sm { width: 30px; height: 30px; border-radius: 9px; font-size: 14px; margin: 0; box-shadow: none; }
+.logo svg { width: 100%; height: 100%; fill: currentColor; display: block; }
+.logo.sm { width: 28px; height: 28px; margin: 0; }
 
 /* ---------- FORM ---------- */
 
@@ -114,7 +114,7 @@ textarea.input { resize: vertical; min-height: 96px; }
 .btn.outline { background: transparent; color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .btn.outline:hover { background: var(--accent-soft); }
 .btn.danger { background: var(--danger); }
-.btn.danger:hover { background: #D65A52; }
+.btn.danger:hover { background: #5C0017; }
 
 .ghost {
   background: transparent;
@@ -271,7 +271,7 @@ main#app { padding-top: 22px; padding-bottom: 48px; }
 .tile-head h3 { font-size: 15px; font-weight: 700; }
 .price { color: var(--accent); font-weight: 700; white-space: nowrap; font-size: 14px; }
 .tile-body .small { margin: 6px 0 0; }
-.allergen { display: inline-block; margin: 10px 0 0; font-size: 12px; color: var(--warn); background: rgba(224, 176, 112, 0.1); padding: 3px 9px; border-radius: 999px; align-self: flex-start; }
+.allergen { display: inline-block; margin: 10px 0 0; font-size: 12px; color: var(--text); background: var(--alert-bg); padding: 3px 9px; border-radius: 999px; align-self: flex-start; }
 
 /* Baris (SOP) */
 .row {
@@ -298,7 +298,7 @@ main#app { padding-top: 22px; padding-bottom: 48px; }
 .person .muted { font-size: 13px; }
 .pill {
   display: inline-block; margin-top: 8px; font-size: 12px; font-weight: 600;
-  color: #25D366; background: rgba(37, 211, 102, 0.1);
+  color: var(--text); background: var(--success);
   padding: 5px 11px; border-radius: 999px; text-decoration: none;
 }
 
