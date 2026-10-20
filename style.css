@@ -573,3 +573,28 @@ ul.plain li:last-child { border-bottom: 0; }
 /* Shift yang sedang berjalan */
 .upsell-session.now { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .now-badge { background: var(--accent); color: #fff; }
+
+/* Loading: bar di atas, spinner di tombol, spinner kecil di status */
+.progress-line {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 70; overflow: hidden;
+  background: rgba(170, 118, 85, 0.15);
+}
+.progress-line > div {
+  height: 100%; width: 40%; background: var(--accent);
+  animation: slide 1.1s ease-in-out infinite;
+}
+@keyframes slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(260%); } }
+.btn.loading { color: transparent !important; position: relative; pointer-events: none; }
+.btn.loading::after {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+  border: 2px solid #fff; border-right-color: transparent; border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+.mini-spinner {
+  display: inline-block; width: 12px; height: 12px; margin-right: 6px; vertical-align: -2px;
+  border: 2px solid var(--accent); border-right-color: transparent; border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .progress-line > div, .btn.loading::after, .mini-spinner { animation: none; }
+}

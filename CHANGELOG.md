@@ -3,6 +3,11 @@
 Each frontend update bumps `APP_VERSION` in `app.js` and the `?v=` values in `index.html`, and is recorded here.
 Backend (`Code.gs`) versions are listed separately at the bottom.
 
+## 2.25.0
+- A thin loading bar at the top appears while any request to the server is running.
+- Buttons show a spinner while working: Log in, Save ("Saving..."), Delete ("Deleting...").
+- Upload status shows a spinner.
+
 ## 2.24.0
 - Shifts are now separate: M6 (06:00), M8 (08:00), M11 (11:00), MD12 (12:00), E2 (14:30). Set in `SHIFT_START`.
 - The "Now" marker follows the exact start time.

@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.24.0";
+const APP_VERSION = "2.25.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -143,10 +143,35 @@ let formState = null;   // { mode: "add" | "edit", sheetKey, row, original }
  * Balasan: { ok, data } atau { ok:false, error }.
  */
 const API_TIMEOUT_MS = 20000;
+let pendingRequests = 0;
+
+/** Bar loading tipis di atas layar, tampil selama ada request ke server. */
+function trackRequest(delta) {
+  pendingRequests = Math.max(0, pendingRequests + delta);
+  const bar = document.getElementById("progress");
+  if (bar) bar.classList.toggle("hidden", pendingRequests === 0);
+}
+
+/** Tombol dengan spinner dan label sementara. Dipakai untuk aksi yang menunggu server. */
+function setBusy(btn, busy, label) {
+  if (!btn) return;
+  if (busy) {
+    if (!btn.dataset.idle) btn.dataset.idle = btn.innerText;
+    btn.innerText = label || btn.dataset.idle;
+    btn.classList.add("loading");
+    btn.disabled = true;
+  } else {
+    btn.innerText = btn.dataset.idle || btn.innerText;
+    delete btn.dataset.idle;
+    btn.classList.remove("loading");
+    btn.disabled = false;
+  }
+}
 
 async function api(fn, args) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  trackRequest(1);
   try {
     const res = await fetch(CONFIG.API_URL, {
       method: "POST",
@@ -162,6 +187,7 @@ async function api(fn, args) {
     throw e;
   } finally {
     clearTimeout(timer);
+    trackRequest(-1);
   }
 }
 
@@ -258,8 +284,7 @@ async function doLogin() {
     return;
   }
 
-  btn.disabled = true;
-  btn.innerText = "Checking...";
+  setBusy(btn, true, "Checking...");
 
   try {
     const res = await api("login", [nik, pin]);
@@ -274,8 +299,7 @@ async function doLogin() {
   } catch (e) {
     err.innerText = "Connection failed: " + e.message;
   } finally {
-    btn.disabled = false;
-    btn.innerText = "Log in";
+    setBusy(btn, false);
   }
 }
 
@@ -934,14 +958,16 @@ function showForm(title, values, canDelete) {
 
 function closeForm() {
   formState = null;
+  setFormBusy(false);
   const modal = document.getElementById("editModal");
   if (modal) modal.classList.add("hidden");
 }
 
-function setFormBusy(busy) {
-  document.getElementById("editSave").disabled = busy;
-  document.getElementById("editDelete").disabled = busy;
-  document.getElementById("editSave").innerText = busy ? "Saving..." : "Save";
+/** Disable both form buttons. The one that was clicked gets a spinner and its label. */
+function setFormBusy(busy, activeId, label) {
+  ["editSave", "editDelete"].forEach(id => { document.getElementById(id).disabled = busy; });
+  if (busy && activeId) setBusy(document.getElementById(activeId), true, label);
+  if (!busy) ["editSave", "editDelete"].forEach(id => setBusy(document.getElementById(id), false));
 }
 
 /* ---------- NILAI DEFAULT & PILIHAN ---------- */
@@ -1096,7 +1122,7 @@ async function saveForm() {
   const row = formState.row;
   const oldValues = withoutRow(formState.original);
 
-  setFormBusy(true);
+  setFormBusy(true, "editSave", "Saving...");
   document.getElementById("editError").innerText = "";
 
   try {
@@ -1123,7 +1149,7 @@ async function deleteForm() {
   const row = formState.row;
   const oldValues = withoutRow(formState.original);
 
-  setFormBusy(true);
+  setFormBusy(true, "editDelete", "Deleting...");
   document.getElementById("editError").innerText = "";
 
   try {
@@ -1204,7 +1230,7 @@ async function onFileChosen(input) {
   }
 
   setFormBusy(true);
-  status.innerText = "Uploading...";
+  status.innerHTML = '<span class="mini-spinner"></span>Uploading...';
   try {
     let base64, mime, name;
     if (isPhoto) {
