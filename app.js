@@ -1,10 +1,10 @@
 /****************************************
  * RELOAD STAFF HUB — FRONTEND (GitHub Pages)
- * Version : 2.6.0 (desain baru, versi di footer)
+ * Version : 2.7.0 (palet brand Reload, font Poppins, logo R)
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.6.0";
+const APP_VERSION = "2.7.0";
 
 const TABS = [
   { key: "home",     label: "Home" },

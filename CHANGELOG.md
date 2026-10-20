@@ -4,6 +4,11 @@ Setiap update frontend menaikkan versi di `app.js` (`APP_VERSION`), `style.css?v
 
 Versi backend (`Code.gs`) dicatat terpisah di bawah.
 
+## 2.7.0
+- Warna mengikuti palet brand Reload (Rich Black, Bone, French Beige, Burgundy, Wasabi, Zinnwaldite).
+- Font Poppins, sama dengan Reload 360.
+- Logo R dipasang di login, header, dan favicon.
+
 ## 2.6.0
 - Desain ulang: header dengan profil user, menu tab pill, kartu grid untuk menu dan tim, hero sapaan di Home.
 - Versi frontend tampil di footer.
