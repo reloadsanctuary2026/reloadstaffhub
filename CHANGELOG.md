@@ -4,6 +4,11 @@ Setiap update frontend menaikkan versi di `app.js` (`APP_VERSION`), `style.css?v
 
 Versi backend (`Code.gs`) dicatat terpisah di bawah.
 
+## 2.10.0
+- Foto (anggota tim, menu, bulletin, tamu) dan file SOP (PDF) diunggah dari perangkat. Tidak perlu lagi menempel link Google Drive.
+- Foto dikecilkan di browser sebelum diunggah. Ukuran file maksimal 5 MB.
+- Backend 2.7.0: fungsi `uploadFile` (hanya untuk tier selain Staff), menyimpan file ke folder "Reload Staff Hub — Upload" di Drive dan membagikannya "siapa pun yang punya link: lihat".
+
 ## 2.9.0
 - Form tambah dan edit tidak lagi pakai ketik bebas untuk isian yang bisa dipilih:
   - Tanggal: date picker, formatnya otomatis seperti sheet (`5 Oct 2026`).

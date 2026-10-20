@@ -1,10 +1,10 @@
 /****************************************
  * RELOAD STAFF HUB — FRONTEND (GitHub Pages)
- * Version : 2.9.0 (form tanpa ketik bebas: dropdown, date picker, checkbox)
+ * Version : 2.10.0 (upload foto dan PDF, tanpa link Drive manual)
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.9.0";
+const APP_VERSION = "2.10.0";
 
 const TABS = [
   { key: "home",     label: "Home" },
@@ -20,7 +20,7 @@ const TABS = [
 /*
  * Konfigurasi form. Tiap field punya cara isi sendiri, supaya pengguna tidak perlu mengetik
  * yang sebenarnya bisa dipilih:
- *   input: "date" | "today" | "price" | "phone" | "drive" | "url" | "multi" | "allergens"
+ *   input: "date" | "today" | "price" | "phone" | "photo" | "pdf" | "url" | "multi" | "allergens"
  *          (kosong = teks biasa)
  *   options: daftar pilihan tetap
  *   src: true = pilihan diambil dari nilai yang sudah ada di sheet, plus "+ Baru…"
@@ -36,7 +36,7 @@ const MENU_FIELDS = [
   { key: "description", label: "Deskripsi", input: "multi" },
   { key: "allergens",   label: "Alergen", input: "allergens" },
   { key: "price",       label: "Harga (Rp)", input: "price" },
-  { key: "image",       label: "Foto", input: "drive" }
+  { key: "image",       label: "Foto", input: "photo" }
 ];
 
 const EDIT_FIELDS = {
@@ -51,7 +51,7 @@ const EDIT_FIELDS = {
     { key: "type",        label: "Tipe", src: true },
     { key: "title",       label: "Judul" },
     { key: "description", label: "Deskripsi", input: "multi" },
-    { key: "image",       label: "Foto", input: "drive" },
+    { key: "image",       label: "Foto", input: "photo" },
     { key: "status",      label: "Status", options: STATUS_OPTIONS }
   ],
   food: MENU_FIELDS,
@@ -60,14 +60,14 @@ const EDIT_FIELDS = {
     { key: "category",    label: "Kategori", src: true },
     { key: "name",        label: "Nama SOP" },
     { key: "description", label: "Deskripsi", input: "multi" },
-    { key: "file",        label: "File SOP", input: "drive" },
+    { key: "file",        label: "File SOP (PDF)", input: "pdf" },
     { key: "updated",     label: "Terakhir diupdate", input: "today" }
   ],
   teams: [
     { key: "department",  label: "Departemen", src: true },
     { key: "position",    label: "Jabatan", src: true },
     { key: "name",        label: "Nama" },
-    { key: "image",       label: "Foto", input: "drive" },
+    { key: "image",       label: "Foto", input: "photo" },
     { key: "phone",       label: "Nomor WhatsApp", input: "phone" }
   ],
   about: [
@@ -80,7 +80,7 @@ const EDIT_FIELDS = {
     { key: "guest",       label: "Nama tamu" },
     { key: "title",       label: "Judul" },
     { key: "description", label: "Deskripsi", input: "multi" },
-    { key: "image",       label: "Foto", input: "drive" },
+    { key: "image",       label: "Foto", input: "photo" },
     { key: "status",      label: "Status", options: STATUS_OPTIONS }
   ],
   academy: [
@@ -658,7 +658,7 @@ function fieldInput(sheetKey, f, v) {
   if (f.input === "date") return '<input class="input" type="date" ' + key + ' value="' + esc(isoFromSheetDate(v)) + '">';
   if (f.input === "price") return '<input class="input" type="number" inputmode="numeric" min="0" step="500" ' + key + ' value="' + esc(v.replace(/\D/g, "")) + '">';
   if (f.input === "phone") return '<input class="input" type="tel" inputmode="numeric" ' + key + ' value="' + esc(v) + '" placeholder="628...">';
-  if (f.input === "drive") return '<input class="input" type="text" ' + key + ' value="' + esc(v) + '" placeholder="Tempel link Google Drive">';
+  if (f.input === "photo" || f.input === "pdf") return uploadHtml(f, v);
   if (f.input === "url") return '<input class="input" type="url" ' + key + ' value="' + esc(v) + '" placeholder="https://...">';
   if (f.input === "multi") return '<textarea class="input" rows="4" ' + key + '>' + esc(v) + '</textarea>';
   if (f.options || f.src) return selectHtml(sheetKey, f, v);
@@ -692,6 +692,10 @@ function checksHtml(f, v) {
 
 /** Kotak "+ Baru…" muncul hanya saat dipilih. */
 function onFormChange(e) {
+  if (e.target.matches && e.target.matches('input[type="file"][data-file]')) {
+    onFileChosen(e.target);
+    return;
+  }
   const sel = e.target;
   if (!sel.matches || !sel.matches("select[data-key]")) return;
   const box = document.querySelector('#editForm [data-new-for="' + sel.dataset.key + '"]');
@@ -733,11 +737,6 @@ function readValue(f) {
   if (f.input === "date") return raw ? formatSheetDate(new Date(raw + "T00:00:00")) : undefined;
   if (f.input === "price") return raw ? Number(raw).toLocaleString("en-US") : "";
   if (f.input === "phone") return raw.replace(/\D/g, "");
-  if (f.input === "drive") {
-    const id = extractDriveId(raw);
-    if (id === null) throw new Error("Link Google Drive untuk " + f.label + " tidak valid. Tempel link lengkap dari Drive.");
-    return id;
-  }
   if (f.input === "url") {
     const t = raw.trim();
     if (t && !/^https?:\/\//i.test(t)) throw new Error(f.label + " harus diawali https://");
@@ -818,15 +817,110 @@ function isoFromSheetDate(v) {
   return m[3] + "-" + String(mi + 1).padStart(2, "0") + "-" + String(m[1]).padStart(2, "0");
 }
 
-/**
- * Ambil ID file dari link Google Drive. Balikin null kalau tidak valid, "" kalau kosong.
- * Menerima link /file/d/ID/view, link ?id=ID, atau ID saja.
- */
-function extractDriveId(text) {
-  const t = String(text || "").trim();
-  if (!t) return "";
-  const m = t.match(/\/d\/([\w-]{20,})/) || t.match(/[?&]id=([\w-]{20,})/) || t.match(/^([\w-]{20,})$/);
-  return m ? m[1] : null;
+/* ---------- UPLOAD FOTO & PDF ---------- */
+
+function uploadHtml(f, v) {
+  const isPhoto = f.input === "photo";
+  const preview = isPhoto && v
+    ? '<img class="upload-preview" data-preview="' + f.key + '" src="' + imgUrl(v) + '" alt="">'
+    : '<div class="upload-preview empty" data-preview="' + f.key + '">' + (isPhoto ? 'Belum ada foto' : 'Belum ada file') + '</div>';
+  const note = !isPhoto
+    ? '<div class="small muted" data-note="' + f.key + '">' + (v ? 'File sudah tersimpan' : '') + '</div>'
+    : '';
+
+  return '<div class="upload">' + preview +
+    '<input type="hidden" data-key="' + f.key + '" value="' + esc(v) + '">' +
+    '<label class="btn small outline upload-btn">' + (v ? 'Ganti ' : 'Pilih ') + (isPhoto ? 'foto' : 'file PDF') +
+      '<input type="file" hidden data-file="' + f.key + '" accept="' + (isPhoto ? 'image/*' : 'application/pdf') + '">' +
+    '</label>' +
+    '<div class="small muted" data-status="' + f.key + '"></div>' + note +
+  '</div>';
+}
+
+function findField(sheetKey, key) {
+  return EDIT_FIELDS[sheetKey].find(f => f.key === key);
+}
+
+/** Foto dikecilkan di browser dulu (maks 1000 px, JPEG), supaya ringan diunggah. */
+async function onFileChosen(input) {
+  const f = findField(formState.sheetKey, input.dataset.file);
+  const file = input.files && input.files[0];
+  input.value = "";
+  if (!f || !file) return;
+
+  const isPhoto = f.input === "photo";
+  const status = document.querySelector('[data-status="' + f.key + '"]');
+  const hidden = document.querySelector('#editForm [data-key="' + f.key + '"]');
+
+  if (isPhoto ? !file.type.startsWith("image/") : file.type !== "application/pdf") {
+    status.innerText = isPhoto ? "Pilih file gambar." : "Pilih file PDF.";
+    return;
+  }
+
+  setFormBusy(true);
+  status.innerText = "Mengunggah...";
+  try {
+    let base64, mime, name;
+    if (isPhoto) {
+      base64 = (await resizeImage(file, 1000)).split(",")[1];
+      mime = "image/jpeg";
+      name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
+    } else {
+      if (file.size > 5 * 1024 * 1024) throw new Error("File terlalu besar. Maksimal 5 MB.");
+      base64 = await readAsBase64(file);
+      mime = "application/pdf";
+      name = file.name;
+    }
+
+    const res = await api("uploadFile", [sessionToken, base64, mime, name]);
+    hidden.value = res.id;
+    status.innerText = "Terunggah.";
+
+    if (isPhoto) {
+      document.querySelector('[data-preview="' + f.key + '"]').outerHTML =
+        '<img class="upload-preview" data-preview="' + f.key + '" src="' + imgUrl(res.id) + '" alt="">';
+    } else {
+      document.querySelector('[data-note="' + f.key + '"]').innerText = "File baru sudah terunggah.";
+    }
+  } catch (e) {
+    if (String(e.message).indexOf("SESSION_EXPIRED") !== -1) {
+      handleApiError(e);
+      return;
+    }
+    status.innerText = e.message;
+  } finally {
+    setFormBusy(false);
+  }
+}
+
+function resizeImage(file, maxSide) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Gambar tidak bisa dibaca. Coba foto lain (JPG atau PNG)."));
+    };
+    img.src = url;
+  });
+}
+
+function readAsBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result).split(",")[1]);
+    reader.onerror = () => reject(new Error("File tidak bisa dibaca."));
+    reader.readAsDataURL(file);
+  });
 }
 
 function formError(e) {
@@ -859,8 +953,10 @@ function groupBy(items, field) {
   return groups;
 }
 
-function imgUrl(fileId) {
-  return "https://drive.google.com/thumbnail?id=" + encodeURIComponent(fileId) + "&sz=w400";
+/** Terima ID file Drive, atau link gambar langsung (misalnya dari HR). */
+function imgUrl(id) {
+  if (/^https?:\/\//.test(id)) return id;
+  return "https://drive.google.com/thumbnail?id=" + encodeURIComponent(id) + "&sz=w400";
 }
 
 function firstName(name) {
