@@ -1,10 +1,10 @@
 /****************************************
  * RELOAD STAFF HUB — FRONTEND (GitHub Pages)
- * Version : 2.14.0 (Home tiga kolom di desktop, satu kolom di HP)
+ * Version : 2.15.0 (Upsell tanpa Status, tampil per tanggal hari ini)
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.14.0";
+const APP_VERSION = "2.15.0";
 
 const TABS = [
   { key: "home",     label: "Home" },
@@ -49,8 +49,7 @@ const EDIT_FIELDS = {
     { key: "shift",    label: "Shift (contoh: M6 & M8)", src: true },
     { key: "item",     label: "Item / kalimat / aturan" },
     { key: "target",   label: "Target", input: "number" },
-    { key: "satuan",   label: "Satuan (contoh: portion/server)", src: true },
-    { key: "status",   label: "Status", options: STATUS_OPTIONS }
+    { key: "satuan",   label: "Satuan (contoh: portion/server)", src: true }
   ],
   importantInfo: [
     { key: "date",        label: "Tanggal", input: "date" },
@@ -383,8 +382,8 @@ function homeCol(title, sheetKey, body) {
  * Baris tanpa Tipe dianggap Item.
  */
 function upsellPanel() {
-  const rows = appData.upsell.filter(isActive);
-  if (!rows.length) return emptyState("Tidak ada upsell aktif.");
+  const rows = appData.upsell.filter(r => isToday(r.date));
+  if (!rows.length) return emptyState("Tidak ada upsell untuk hari ini.");
 
   const isItem = r => !r.tipe || r.tipe === "Item";
   const items = rows.filter(isItem);
@@ -642,6 +641,13 @@ function canEdit() {
  * Item yang tampil: staff hanya lihat yang ACTIVE, editor lihat semua
  * supaya bisa mengaktifkan lagi item yang nonaktif.
  */
+/** Tanggal baris (format sheet, misalnya "20 Oct 2026") sama dengan hari ini? */
+function isToday(sheetDate) {
+  const d = new Date();
+  const today = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  return isoFromSheetDate(sheetDate) === today;
+}
+
 /** Satu definisi "aktif". Semua pengecekan status lewat sini. */
 function isActive(rec) {
   return rec.status === "ACTIVE";

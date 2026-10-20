@@ -4,6 +4,11 @@ Setiap update frontend menaikkan versi di `app.js` (`APP_VERSION`), `style.css?v
 
 Versi backend (`Code.gs`) dicatat terpisah di bawah.
 
+## 2.15.0
+- Upsell tidak lagi pakai kolom Status. Yang tampil di Home hanya baris dengan tanggal hari ini.
+- Kalau tidak ada baris untuk hari ini, Upsell menampilkan "Tidak ada upsell untuk hari ini."
+- Backend 2.10.0: kolom Status dihapus dari skema tab `11_UpsellToday`. Kolom Status yang masih ada di sheet tidak dibaca dan boleh dihapus.
+
 ## 2.14.0
 - Home: Upsell Today, Important Info, dan Staff Bulletin dalam satu baris. Tiga kolom di desktop, dua kolom di tablet, satu kolom (urut: Upsell, Info, Bulletin) di HP.
 - Tombol Edit dan Tambah lebih besar di HP, supaya mudah disentuh.
