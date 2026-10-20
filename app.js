@@ -1,10 +1,10 @@
 /****************************************
  * RELOAD STAFF HUB — FRONTEND (GitHub Pages)
- * Version : 2.10.0 (upload foto dan PDF, tanpa link Drive manual)
+ * Version : 2.12.0 (tab Upsell Today terpisah, Home dua kolom)
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.10.0";
+const APP_VERSION = "2.12.0";
 
 const TABS = [
   { key: "home",     label: "Home" },
@@ -40,6 +40,12 @@ const MENU_FIELDS = [
 ];
 
 const EDIT_FIELDS = {
+  upsell: [
+    { key: "date",        label: "Tanggal", input: "date" },
+    { key: "title",       label: "Judul" },
+    { key: "description", label: "Deskripsi", input: "multi" },
+    { key: "status",      label: "Status", options: STATUS_OPTIONS }
+  ],
   importantInfo: [
     { key: "date",        label: "Tanggal", input: "date" },
     { key: "title",       label: "Judul" },
@@ -103,6 +109,7 @@ const EDIT_FIELDS = {
 };
 
 const SHEET_LABELS = {
+  upsell: "Upsell Today",
   importantInfo: "Important Info",
   bulletin: "Staff Bulletin",
   food: "Food Bible",
@@ -171,6 +178,7 @@ window.addEventListener("load", async function () {
   });
 
   if (!sessionToken) return showLogin();
+  document.getElementById("boot").classList.remove("hidden");
 
   try {
     const sess = await api("checkSession", [sessionToken]);
@@ -183,13 +191,19 @@ window.addEventListener("load", async function () {
 
 /* ---------- LOGIN ---------- */
 
+function hideBoot() {
+  document.getElementById("boot").classList.add("hidden");
+}
+
 function showLogin() {
+  hideBoot();
   document.getElementById("loginScreen").classList.remove("hidden");
   document.getElementById("appShell").classList.add("hidden");
   document.getElementById("loginPin").value = "";
 }
 
 function enterApp(user) {
+  hideBoot();
   currentName = user.name || "";
   currentCanEdit = !!user.canEdit;
   document.getElementById("loginScreen").classList.add("hidden");
@@ -256,7 +270,27 @@ async function loadData() {
     renderTab();
   } catch (e) {
     handleApiError(e);
+    if (!appData) showLoadError();
   }
+}
+
+function skeletonHtml() {
+  return '<div aria-busy="true" aria-label="Memuat data">' +
+    '<div class="skeleton tall"></div>' +
+    '<div class="skeleton"></div>' +
+    '<div class="skeleton"></div>' +
+    '<div class="skeleton"></div>' +
+    '</div>';
+}
+
+function showLoadError() {
+  document.getElementById("app").innerHTML =
+    '<div class="empty">Gagal memuat data. <br><button class="ghost" type="button" onclick="retryLoad()">Coba lagi</button></div>';
+}
+
+function retryLoad() {
+  renderTab();
+  loadData();
 }
 
 function handleApiError(e) {
@@ -288,7 +322,7 @@ function showTab(key) {
 function renderTab() {
   const app = document.getElementById("app");
   if (!appData) {
-    app.innerHTML = '<p class="muted">Memuat data...</p>';
+    app.innerHTML = skeletonHtml();
     return;
   }
 
@@ -308,7 +342,8 @@ function renderTab() {
 /* ---------- HOME ---------- */
 
 function viewHome() {
-  const info = appData.importantInfo.find(r => r.status === "ACTIVE");
+  const info = appData.importantInfo.find(isActive);
+  const upsell = appData.upsell.find(isActive);
   const quotes = appData.inspiration.filter(r => r.greeting === timeOfDay());
   const quote = quotes.length ? quotes[new Date().getDate() % quotes.length] : null;
   const news = appData.bulletin.filter(showItem);
@@ -324,27 +359,33 @@ function viewHome() {
       addBtn("inspiration", "+ Quote") +
     '</section>' +
 
-    sectionHead("Important Info", "importantInfo") +
-    (info
-      ? '<div class="card highlight">' +
-          '<div class="caption-label">' + esc(info.date) + '</div>' +
-          '<strong>' + esc(info.title) + '</strong>' +
-          '<p class="pre muted">' + esc(info.description) + '</p>' +
-          editBtn("importantInfo", info) +
-        '</div>'
-      : emptyState("Tidak ada info aktif.")) +
+    '<div class="grid two">' +
+      '<div>' + sectionHead("Upsell Today", "upsell") +
+        (upsell ? highlightCard(upsell, "upsell") : emptyState("Tidak ada upsell aktif.")) + '</div>' +
+      '<div>' + sectionHead("Important Info", "importantInfo") +
+        (info ? highlightCard(info, "importantInfo") : emptyState("Tidak ada info aktif.")) + '</div>' +
+    '</div>' +
 
     sectionHead("Staff Bulletin", "bulletin") +
     (news.length
-      ? news.map(r =>
-          '<div class="note' + inactiveClass(r) + '"><div class="note-body">' +
-            '<div class="small muted">' + esc(r.date) + (r.type ? ' · ' + esc(r.type) : '') + statusBadge(r) + '</div>' +
-            '<div class="note-title">' + esc(r.title) + '</div>' +
-            '<p class="pre muted">' + esc(r.description) + '</p>' +
-            editBtn("bulletin", r) +
-          '</div></div>'
-        ).join("")
+      ? listWithInactive(news, bulletinCard)
       : emptyState("Belum ada bulletin aktif."));
+}
+
+/** Kartu sorotan (Upsell Today dan Important Info). */
+function highlightCard(r, sheetKey) {
+  return '<div class="card highlight"><div class="caption-label">' + esc(r.date) + '</div>' +
+    '<strong>' + esc(r.title) + '</strong>' +
+    '<p class="pre muted">' + esc(r.description) + '</p>' +
+    editBtn(sheetKey, r) + '</div>';
+}
+
+function bulletinCard(r) {
+  return '<div class="note' + inactiveClass(r) + '"><div class="note-body">' +
+    '<div class="small muted">' + esc(r.date) + (r.type ? ' · ' + esc(r.type) : '') + statusBadge(r) + '</div>' +
+    '<div class="note-title">' + esc(r.title) + '</div>' +
+    '<p class="pre muted">' + esc(r.description) + '</p>' +
+    editBtn("bulletin", r) + '</div></div>';
 }
 
 function timeOfDay() {
@@ -497,21 +538,20 @@ function viewGuests() {
   const rows = appData.guests.filter(showItem);
   return sectionHead("Guest Notes", "guests") +
     (rows.length
-      ? rows.map(r =>
-          '<div class="note' + inactiveClass(r) + '">' +
-            (r.image ? '<img class="thumb" src="' + imgUrl(r.image) + '" alt="" loading="lazy">' : '') +
-            '<div class="note-body">' +
-              '<div class="row-between">' +
-                '<strong>' + esc(r.guest) + '</strong>' +
-                '<span class="badge">' + esc(r.category) + '</span>' + statusBadge(r) +
-              '</div>' +
-              '<div class="small muted">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</div>' +
-              '<p class="pre muted small">' + esc(r.description) + '</p>' +
-              editBtn("guests", r) +
-            '</div>' +
-          '</div>'
-        ).join("")
+      ? listWithInactive(rows, guestCard)
       : emptyState("Tidak ada catatan tamu aktif."));
+}
+
+function guestCard(r) {
+  return '<div class="note' + inactiveClass(r) + '">' +
+    (r.image ? '<img class="thumb" src="' + imgUrl(r.image) + '" alt="" loading="lazy">' : '') +
+    '<div class="note-body">' +
+      '<div class="row-between"><strong>' + esc(r.guest) + '</strong>' +
+      '<span class="badge">' + esc(r.category) + '</span>' + statusBadge(r) + '</div>' +
+      '<div class="small muted">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</div>' +
+      '<p class="pre muted small">' + esc(r.description) + '</p>' +
+      editBtn("guests", r) +
+    '</div></div>';
 }
 
 function viewAbout() {
@@ -528,6 +568,20 @@ function viewAbout() {
       : emptyState("Belum ada informasi."));
 }
 
+/**
+ * Item aktif tampil biasa. Item nonaktif (hanya ada untuk editor) dilipat
+ * dalam satu bagian tertutup supaya daftar utama tidak panjang.
+ */
+function listWithInactive(rows, renderItem) {
+  const active = rows.filter(isActive);
+  const inactive = rows.filter(r => !isActive(r));
+  const activeHtml = active.map(renderItem).join("");
+  if (!inactive.length) return activeHtml;
+  return activeHtml +
+    '<details class="inactive-group"><summary>Nonaktif (' + inactive.length + ')</summary>' +
+    inactive.map(renderItem).join("") + '</details>';
+}
+
 /* ---------- TOMBOL EDIT / TAMBAH ---------- */
 
 /** Satu definisi "boleh edit": dari backend. Dipakai semua tombol tambah/edit/hapus. */
@@ -539,17 +593,22 @@ function canEdit() {
  * Item yang tampil: staff hanya lihat yang ACTIVE, editor lihat semua
  * supaya bisa mengaktifkan lagi item yang nonaktif.
  */
+/** Satu definisi "aktif". Semua pengecekan status lewat sini. */
+function isActive(rec) {
+  return rec.status === "ACTIVE";
+}
+
 function showItem(rec) {
-  return currentCanEdit || rec.status === "ACTIVE";
+  return currentCanEdit || isActive(rec);
 }
 
 function inactiveClass(rec) {
-  return rec.status === "ACTIVE" ? "" : " is-inactive";
+  return isActive(rec) ? "" : " is-inactive";
 }
 
 /** Label "Nonaktif" hanya untuk editor. Staff tidak pernah melihat item nonaktif. */
 function statusBadge(rec) {
-  if (!currentCanEdit || rec.status === "ACTIVE") return "";
+  if (!currentCanEdit || isActive(rec)) return "";
   return ' <span class="badge off">Nonaktif</span>';
 }
 

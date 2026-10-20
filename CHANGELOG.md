@@ -4,6 +4,16 @@ Setiap update frontend menaikkan versi di `app.js` (`APP_VERSION`), `style.css?v
 
 Versi backend (`Code.gs`) dicatat terpisah di bawah.
 
+## 2.12.0
+- Tab sheet baru `11_UpsellToday` (kolom: Date, Title, Description, Status). Upsell Today tidak lagi dicampur dengan Important Info.
+- Home dua kolom: Upsell Today di kiri, Important Info di kanan. Di HP keduanya tersusun vertikal.
+- Backend 2.8.0: sheet `11_UpsellToday` ikut dibaca dan bisa ditambah, diedit, dan dihapus dengan aturan yang sama.
+
+## 2.11.0
+- Loading: skeleton saat data dimuat, spinner saat cek sesi, dan tombol "Coba lagi" kalau gagal.
+- Item nonaktif (hanya untuk editor) dilipat dalam bagian "Nonaktif (N)" yang tertutup, di Home (bulletin) dan Guests.
+- Satu definisi "aktif" (`isActive`) untuk semua pengecekan status.
+
 ## 2.10.0
 - Foto (anggota tim, menu, bulletin, tamu) dan file SOP (PDF) diunggah dari perangkat. Tidak perlu lagi menempel link Google Drive.
 - Foto dikecilkan di browser sebelum diunggah. Ukuran file maksimal 5 MB.
