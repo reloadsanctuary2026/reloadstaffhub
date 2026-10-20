@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.19.0";
+const APP_VERSION = "2.20.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -24,87 +24,87 @@ const TABS = [
  *   input: "date" | "today" | "price" | "phone" | "photo" | "pdf" | "url" | "multi" | "allergens"
  *          (kosong = teks biasa)
  *   options: daftar pilihan tetap
- *   src: true = pilihan diambil dari nilai yang sudah ada di sheet, plus "+ Baru…"
+ *   src: true = pilihan diambil dari nilai yang sudah ada di sheet, plus "+ New…"
  */
 const STATUS_OPTIONS = ["ACTIVE", "INACTIVE"];
-const UPSELL_TIPE = ["Item", "Kalimat", "Aturan"];
+const UPSELL_TIPE = ["Item", "Line", "Rule"];
 const SESI_ORDER = ["Morning", "Afternoon", "Evening"];
 const ALLERGEN_OPTIONS = ["Gluten", "Milk", "Egg", "Nut", "Seafood", "Soy"];
 const DIFFICULTY_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
 const SECTION_OPTIONS = ["Company Story", "Vision", "Mission", "Identity & Essences", "Core Values"];
 
 const MENU_FIELDS = [
-  { key: "category",    label: "Kategori", src: true },
-  { key: "name",        label: "Nama menu" },
-  { key: "description", label: "Deskripsi", input: "multi" },
-  { key: "allergens",   label: "Alergen", input: "allergens" },
-  { key: "price",       label: "Harga (Rp)", input: "price" },
-  { key: "image",       label: "Foto", input: "photo" }
+  { key: "category",    label: "Category", src: true },
+  { key: "name",        label: "Menu name" },
+  { key: "description", label: "Description", input: "multi" },
+  { key: "allergens",   label: "Allergens", input: "allergens" },
+  { key: "price",       label: "Price (Rp)", input: "price" },
+  { key: "image",       label: "Photo", input: "photo" }
 ];
 
 const EDIT_FIELDS = {
   upsell: [
-    { key: "date",     label: "Tanggal", input: "date" },
-    { key: "tipe",     label: "Tipe", options: UPSELL_TIPE },
-    { key: "sesi",     label: "Sesi", options: SESI_ORDER },
-    { key: "shift",    label: "Shift (contoh: M6 & M8)", src: true },
-    { key: "item",     label: "Item / kalimat / aturan" },
+    { key: "date",     label: "Date", input: "date" },
+    { key: "tipe",     label: "Type", options: UPSELL_TIPE },
+    { key: "sesi",     label: "Session", options: SESI_ORDER },
+    { key: "shift",    label: "Shift (e.g. M6 & M8)", src: true },
+    { key: "item",     label: "Item / line / rule" },
     { key: "target",   label: "Target", input: "number" },
-    { key: "satuan",   label: "Satuan (contoh: portion/server)", src: true }
+    { key: "satuan",   label: "Unit (e.g. portion/server)", src: true }
   ],
   bulletin: [
-    { key: "date",        label: "Tanggal", input: "date" },
-    { key: "type",        label: "Tipe", src: true },
-    { key: "title",       label: "Judul" },
-    { key: "description", label: "Deskripsi", input: "multi" },
-    { key: "image",       label: "Foto", input: "photo" },
+    { key: "date",        label: "Date", input: "date" },
+    { key: "type",        label: "Type", src: true },
+    { key: "title",       label: "Title" },
+    { key: "description", label: "Description", input: "multi" },
+    { key: "image",       label: "Photo", input: "photo" },
     { key: "status",      label: "Status", options: STATUS_OPTIONS }
   ],
   food: MENU_FIELDS,
   beverage: MENU_FIELDS,
   sop: [
-    { key: "category",    label: "Kategori", src: true },
-    { key: "name",        label: "Nama SOP" },
-    { key: "description", label: "Deskripsi", input: "multi" },
-    { key: "file",        label: "File SOP (PDF)", input: "pdf" },
-    { key: "updated",     label: "Terakhir diupdate", input: "today" }
+    { key: "category",    label: "Category", src: true },
+    { key: "name",        label: "SOP name" },
+    { key: "description", label: "Description", input: "multi" },
+    { key: "file",        label: "SOP file (PDF)", input: "pdf" },
+    { key: "updated",     label: "Last updated", input: "today" }
   ],
   teams: [
-    { key: "department",  label: "Departemen", src: true },
-    { key: "position",    label: "Jabatan", src: true },
-    { key: "name",        label: "Nama" },
-    { key: "image",       label: "Foto", input: "photo" },
-    { key: "phone",       label: "Nomor WhatsApp", input: "phone" }
+    { key: "department",  label: "Department", src: true },
+    { key: "position",    label: "Position", src: true },
+    { key: "name",        label: "Name" },
+    { key: "image",       label: "Photo", input: "photo" },
+    { key: "phone",       label: "WhatsApp number", input: "phone" }
   ],
   about: [
-    { key: "section",     label: "Bagian", options: SECTION_OPTIONS, src: true },
-    { key: "content",     label: "Isi", input: "multi" }
+    { key: "section",     label: "Section", options: SECTION_OPTIONS, src: true },
+    { key: "content",     label: "Content", input: "multi" }
   ],
   guests: [
-    { key: "date",        label: "Tanggal", input: "date" },
-    { key: "category",    label: "Kategori", src: true },
-    { key: "guest",       label: "Nama tamu" },
-    { key: "title",       label: "Judul" },
-    { key: "description", label: "Deskripsi", input: "multi" },
-    { key: "image",       label: "Foto", input: "photo" },
+    { key: "date",        label: "Date", input: "date" },
+    { key: "category",    label: "Category", src: true },
+    { key: "guest",       label: "Guest name" },
+    { key: "title",       label: "Title" },
+    { key: "description", label: "Description", input: "multi" },
+    { key: "image",       label: "Photo", input: "photo" },
     { key: "status",      label: "Status", options: STATUS_OPTIONS }
   ],
   academy: [
-    { key: "category",    label: "Kategori", src: true },
-    { key: "title",       label: "Judul" },
-    { key: "shortDesc",   label: "Deskripsi singkat" },
-    { key: "content",     label: "Isi materi", input: "multi" },
-    { key: "fullLink",    label: "Link materi", input: "url" },
-    { key: "video",       label: "Link video", input: "url" },
-    { key: "readingTime", label: "Waktu baca", src: true },
+    { key: "category",    label: "Category", src: true },
+    { key: "title",       label: "Title" },
+    { key: "shortDesc",   label: "Short description" },
+    { key: "content",     label: "Material content", input: "multi" },
+    { key: "fullLink",    label: "Material link", input: "url" },
+    { key: "video",       label: "Video link", input: "url" },
+    { key: "readingTime", label: "Reading time", src: true },
     { key: "knowledge",   label: "Knowledge of the Week", options: ["NO", "YES"] },
-    { key: "updated",     label: "Terakhir diupdate", input: "today" },
-    { key: "difficulty",  label: "Tingkat kesulitan", options: DIFFICULTY_OPTIONS, src: true }
+    { key: "updated",     label: "Last updated", input: "today" },
+    { key: "difficulty",  label: "Difficulty", options: DIFFICULTY_OPTIONS, src: true }
   ],
   inspiration: [
-    { key: "greeting",    label: "Waktu", options: ["Morning", "Afternoon", "Evening", "Night"] },
+    { key: "greeting",    label: "Time", options: ["Morning", "Afternoon", "Evening", "Night"] },
     { key: "quote",       label: "Quote", input: "multi" },
-    { key: "author",      label: "Penulis", src: true }
+    { key: "author",      label: "Author", src: true }
   ]
 };
 
@@ -118,7 +118,7 @@ const SHEET_LABELS = {
   about: "About Reload",
   guests: "Guest Notes",
   academy: "Reload Academy",
-  inspiration: "Quote Harian"
+  inspiration: "Daily Quote"
 };
 
 let sessionToken = readStore_("rsh_token");
@@ -147,7 +147,7 @@ async function api(fn, args) {
     body: JSON.stringify({ fn: fn, args: args || [] })
   });
   const json = await res.json();
-  if (!json.ok) throw new Error(json.error || "Gagal memuat data.");
+  if (!json.ok) throw new Error(json.error || "Failed to load data.");
   return json.data;
 }
 
@@ -240,12 +240,12 @@ async function doLogin() {
 
   err.innerText = "";
   if (!nik || !pin) {
-    err.innerText = "NIK dan PIN wajib diisi.";
+    err.innerText = "NIK and PIN are required.";
     return;
   }
 
   btn.disabled = true;
-  btn.innerText = "Memeriksa...";
+  btn.innerText = "Checking...";
 
   try {
     const res = await api("login", [nik, pin]);
@@ -258,10 +258,10 @@ async function doLogin() {
       document.getElementById("loginPin").value = "";
     }
   } catch (e) {
-    err.innerText = "Gagal terhubung: " + e.message;
+    err.innerText = "Connection failed: " + e.message;
   } finally {
     btn.disabled = false;
-    btn.innerText = "Masuk";
+    btn.innerText = "Log in";
   }
 }
 
@@ -292,7 +292,7 @@ async function loadData() {
 }
 
 function skeletonHtml() {
-  return '<div aria-busy="true" aria-label="Memuat data">' +
+  return '<div aria-busy="true" aria-label="Loading data">' +
     '<div class="skeleton tall"></div>' +
     '<div class="skeleton"></div>' +
     '<div class="skeleton"></div>' +
@@ -302,7 +302,7 @@ function skeletonHtml() {
 
 function showLoadError() {
   document.getElementById("app").innerHTML =
-    '<div class="empty">Gagal memuat data. <br><button class="ghost" type="button" onclick="retryLoad()">Coba lagi</button></div>';
+    '<div class="empty">Failed to load data. <br><button class="ghost" type="button" onclick="retryLoad()">Try again</button></div>';
 }
 
 function retryLoad() {
@@ -317,10 +317,10 @@ function isSessionExpired(e) {
 
 function handleApiError(e) {
   if (isSessionExpired(e)) {
-    toast("Sesi kamu sudah habis. Silakan masuk lagi.");
+    toast("Your session has expired. Please log in again.");
     endSession();
   } else {
-    toast("Gagal memuat data: " + e.message);
+    toast("Failed to load data: " + e.message);
   }
 }
 
@@ -376,7 +376,7 @@ function viewHome() {
   const news = appData.bulletin.filter(showItem);
 
   return '<section class="hero">' +
-      '<div class="hero-greet">Selamat ' + dayPart().word + '</div>' +
+      '<div class="hero-greet">Good ' + dayPart().word + '</div>' +
       '<div class="hero-name">' + esc(greetingName()) + '</div>' +
       (quote
         ? '<p class="hero-quote">“' + esc(quote.quote) + '”</p>' +
@@ -388,11 +388,11 @@ function viewHome() {
 
     '<div class="home-grid">' +
       homeCol("Our Guests", "guests",
-        guests.length ? listWithInactive(guests, guestCard) : emptyState("Tidak ada catatan tamu aktif."),
-        '<button class="ghost small-link" type="button" onclick="openGuestsLanding()">Lihat semua</button>') +
+        guests.length ? listWithInactive(guests, guestCard) : emptyState("No active guest notes."),
+        '<button class="ghost small-link" type="button" onclick="openGuestsLanding()">View all</button>') +
       homeCol("Upsell Today", "upsell", upsellPanel()) +
       homeCol("Staff Bulletin", "bulletin",
-        news.length ? listWithInactive(news, bulletinCard) : emptyState("Belum ada bulletin aktif.")) +
+        news.length ? listWithInactive(news, bulletinCard) : emptyState("No active bulletin yet.")) +
     '</div>';
 }
 
@@ -407,7 +407,7 @@ function homeCol(title, sheetKey, body, extra) {
  */
 function upsellPanel() {
   const rows = appData.upsell.filter(r => isToday(r.date));
-  if (!rows.length) return emptyState("Tidak ada upsell untuk hari ini.");
+  if (!rows.length) return emptyState("No upsell for today.");
 
   const isItem = r => !r.tipe || r.tipe === "Item";
   const items = rows.filter(isItem);
@@ -430,16 +430,16 @@ function upsellPanel() {
     '</div>';
   }).join("");
 
-  const kalimat = rows.filter(r => r.tipe === "Kalimat");
-  const aturan = rows.filter(r => r.tipe === "Aturan");
+  const kalimat = rows.filter(r => r.tipe === "Line");
+  const aturan = rows.filter(r => r.tipe === "Rule");
 
   return sesiHtml +
     (kalimat.length
-      ? '<div class="card"><div class="caption-label">Kalimat upsell</div><ul class="plain">' +
+      ? '<div class="card"><div class="caption-label">Upsell lines</div><ul class="plain">' +
         kalimat.map(r => '<li>' + esc(r.item) + editBtn("upsell", r) + '</li>').join("") + '</ul></div>'
       : '') +
     aturan.map(r =>
-      '<div class="card highlight"><div class="caption-label">Aturan</div><strong>' + esc(r.item) + '</strong>' +
+      '<div class="card highlight"><div class="caption-label">Rule</div><strong>' + esc(r.item) + '</strong>' +
       editBtn("upsell", r) + '</div>'
     ).join("");
 }
@@ -455,17 +455,17 @@ function bulletinCard(r) {
 /** Bagian hari: kunci untuk kutipan harian dan kata sapaan. */
 function dayPart() {
   const h = new Date().getHours();
-  if (h < 11) return { key: "Morning", word: "pagi" };
-  if (h < 15) return { key: "Afternoon", word: "siang" };
-  if (h < 19) return { key: "Evening", word: "sore" };
-  return { key: "Night", word: "malam" };
+  if (h < 11) return { key: "Morning", word: "morning" };
+  if (h < 15) return { key: "Afternoon", word: "afternoon" };
+  if (h < 19) return { key: "Evening", word: "evening" };
+  return { key: "Night", word: "night" };
 }
 
 /* ---------- MENU / SOP / ACADEMY (ada pencarian) ---------- */
 
 function viewSearchable(sheetKey) {
   return sectionHead(SHEET_LABELS[sheetKey], sheetKey) +
-    '<input class="input search" type="search" placeholder="Cari..." value="' + esc(searchText) +
+    '<input class="input search" type="search" placeholder="Search..." value="' + esc(searchText) +
     '" oninput="onSearch(this.value)">' +
     '<div id="listArea">' + listHtml() + '</div>';
 }
@@ -496,7 +496,7 @@ function grouped(items, field, renderBody) {
 
 function menuList(rows, sheetKey) {
   const items = rows.filter(r => r.name && matches([r.category, r.name, r.description]));
-  if (!items.length) return emptyState("Tidak ada menu yang cocok.");
+  if (!items.length) return emptyState("No matching menu items.");
   return grouped(items, "category", list =>
     '<div class="grid">' + list.map(r => menuCard(r, sheetKey)).join("") + '</div>');
 }
@@ -518,7 +518,7 @@ function menuCard(r, sheetKey) {
 
 function sopList() {
   const items = appData.sop.filter(r => r.name && r.file && matches([r.category, r.name, r.description]));
-  if (!items.length) return emptyState("Tidak ada SOP yang cocok.");
+  if (!items.length) return emptyState("No matching SOPs.");
   return grouped(items, "category", list => list.map(sopRow).join(""));
 }
 
@@ -536,7 +536,7 @@ function sopRow(r) {
 
 function academyList() {
   const items = appData.academy.filter(r => r.title && matches([r.category, r.title, r.shortDesc]));
-  if (!items.length) return emptyState("Tidak ada materi yang cocok.");
+  if (!items.length) return emptyState("No matching materials.");
   return grouped(items, "category", list =>
     '<div class="grid two">' + list.map(academyCard).join("") + '</div>');
 }
@@ -555,8 +555,8 @@ function academyCard(r) {
     '</div>' +
     (r.content ? '<p class="pre muted small">' + esc(r.content) + '</p>' : '') +
     '<div class="actions">' +
-      (r.video ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(r.video) + '">Tonton video</a>' : '') +
-      (r.fullLink ? '<a class="btn small outline" target="_blank" rel="noopener" href="' + esc(r.fullLink) + '">Baca materi</a>' : '') +
+      (r.video ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(r.video) + '">Watch video</a>' : '') +
+      (r.fullLink ? '<a class="btn small outline" target="_blank" rel="noopener" href="' + esc(r.fullLink) + '">Read material</a>' : '') +
     '</div>' +
     editBtn("academy", r) +
   '</article>';
@@ -569,7 +569,7 @@ function viewTeams() {
   return sectionHead(SHEET_LABELS.teams, "teams") +
     (rows.length
       ? grouped(rows, "department", list => '<div class="grid">' + list.map(personCard).join("") + '</div>')
-      : emptyState("Belum ada data tim."));
+      : emptyState("No team data yet."));
 }
 
 function personCard(r) {
@@ -615,7 +615,7 @@ function guestCard(r) {
   const long = String(r.description || "").length > 140;
   return '<div class="note guest' + inactiveClass(r) + '">' +
     (r.image
-      ? '<button class="guest-photo" type="button" onclick="openGuest(' + r._row + ')" aria-label="Lihat detail ' + esc(r.guest) + '">' +
+      ? '<button class="guest-photo" type="button" onclick="openGuest(' + r._row + ')" aria-label="View details of ' + esc(r.guest) + '">' +
           '<img src="' + imgUrl(r.image) + '" alt="" loading="lazy"></button>'
       : '') +
     '<div class="note-body">' +
@@ -623,7 +623,7 @@ function guestCard(r) {
       '<span class="badge">' + esc(r.category) + '</span>' + statusBadge(r) + '</div>' +
       '<div class="small muted">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</div>' +
       '<p class="clamp" id="guest-text-' + r._row + '">' + esc(r.description) + '</p>' +
-      (long ? '<button class="more" type="button" onclick="toggleMore(' + r._row + ')">Baca selengkapnya</button>' : '') +
+      (long ? '<button class="more" type="button" onclick="toggleMore(' + r._row + ')">Read more</button>' : '') +
       editBtn("guests", r) +
     '</div>' +
   '</div>';
@@ -633,13 +633,13 @@ function toggleMore(row) {
   const text = document.getElementById("guest-text-" + row);
   const btn = text.nextElementSibling;
   const open = text.classList.toggle("open");
-  btn.innerText = open ? "Tutup" : "Baca selengkapnya";
+  btn.innerText = open ? "Show less" : "Read more";
 }
 
 /** Detail tamu: foto besar dan catatan lengkap. */
 function openGuest(row) {
   const r = (appData.guests || []).find(x => x._row === row);
-  if (!r) return toast("Data sudah tidak ada. Refresh dulu.");
+  if (!r) return toast("This data no longer exists. Refresh first.");
   document.getElementById("guestBody").innerHTML =
     (r.image ? '<img class="guest-hero" src="' + imgUrl(r.image) + '" alt="' + esc(r.guest) + '">' : '') +
     '<div class="row-between"><strong class="guest-name">' + esc(r.guest) + '</strong>' +
@@ -666,21 +666,21 @@ function openGuestsLanding() {
 
 function viewGuestsLanding() {
   return '<div class="gl-head">' +
-      '<button class="ghost" type="button" onclick="showTab(\'home\')">← Kembali</button>' +
+      '<button class="ghost" type="button" onclick="showTab(\'home\')">← Back</button>' +
       '<h2 class="section-title">Our Guests</h2>' +
-      addBtn("guests", "+ Tambah") +
+      addBtn("guests", "+ Add") +
     '</div>' +
     '<div class="gl-chips" id="glChips">' + guestChips() + '</div>' +
     '<div class="gl-toolbar">' +
-      '<input class="input gl-search" type="search" placeholder="Cari nama, catatan..." value="' + esc(guestFilter.q) +
+      '<input class="input gl-search" type="search" placeholder="Search name, notes..." value="' + esc(guestFilter.q) +
         '" oninput="guestSearch(this.value)">' +
       '<select class="input gl-sort" onchange="guestSort(this.value)">' +
-        [["newest", "Terbaru"], ["oldest", "Terlama"], ["name-asc", "Nama A-Z"], ["name-desc", "Nama Z-A"]]
+        [["newest", "Newest"], ["oldest", "Oldest"], ["name-asc", "Name A-Z"], ["name-desc", "Name Z-A"]]
           .map(o => '<option value="' + o[0] + '"' + (guestFilter.sort === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join("") +
       '</select>' +
       '<div class="seg">' +
-        '<button type="button" class="' + (guestFilter.view === "grid" ? "on" : "") + '" aria-label="Tampilan grid" onclick="guestView(\'grid\')">▦</button>' +
-        '<button type="button" class="' + (guestFilter.view === "list" ? "on" : "") + '" aria-label="Tampilan list" onclick="guestView(\'list\')">☰</button>' +
+        '<button type="button" class="' + (guestFilter.view === "grid" ? "on" : "") + '" aria-label="Grid view" onclick="guestView(\'grid\')">▦</button>' +
+        '<button type="button" class="' + (guestFilter.view === "list" ? "on" : "") + '" aria-label="List view" onclick="guestView(\'list\')">☰</button>' +
       '</div>' +
     '</div>' +
     '<div id="glList">' + guestListHtml() + '</div>';
@@ -709,7 +709,7 @@ function guestListHtml() {
   if (q) rows = rows.filter(r => [r.guest, r.title, r.description, r.category].join(" ").toLowerCase().indexOf(q) !== -1);
   rows = sortGuests(rows, guestFilter.sort);
 
-  if (!rows.length) return emptyState("Tidak ada tamu yang cocok.");
+  if (!rows.length) return emptyState("No matching guests.");
 
   const shown = rows.slice(0, guestFilter.shown);
   const body = guestFilter.view === "grid"
@@ -719,7 +719,7 @@ function guestListHtml() {
     ? '<button class="btn outline" type="button" onclick="guestMore()">Tampilkan lebih banyak</button>'
     : '';
   return body +
-    '<div class="gl-more"><p class="muted small">Menampilkan ' + shown.length + ' dari ' + rows.length + ' tamu</p>' + more + '</div>';
+    '<div class="gl-more"><p class="muted small">Showing ' + shown.length + ' of ' + rows.length + ' guests</p>' + more + '</div>';
 }
 
 function sortGuests(rows, mode) {
@@ -793,7 +793,7 @@ function viewAbout() {
           editBtn("about", r) + '</div>'
         ).join("") +
         '</div>'
-      : emptyState("Belum ada informasi."));
+      : emptyState("No information yet."));
 }
 
 /**
@@ -806,7 +806,7 @@ function listWithInactive(rows, renderItem) {
   const activeHtml = active.map(renderItem).join("");
   if (!inactive.length) return activeHtml;
   return activeHtml +
-    '<details class="inactive-group"><summary>Nonaktif (' + inactive.length + ')</summary>' +
+    '<details class="inactive-group"><summary>Inactive (' + inactive.length + ')</summary>' +
     inactive.map(renderItem).join("") + '</details>';
 }
 
@@ -842,12 +842,12 @@ function inactiveClass(rec) {
 /** Label "Nonaktif" hanya untuk editor. Staff tidak pernah melihat item nonaktif. */
 function statusBadge(rec) {
   if (!currentCanEdit || isActive(rec)) return "";
-  return ' <span class="badge off">Nonaktif</span>';
+  return ' <span class="badge off">Inactive</span>';
 }
 
 function sectionHead(title, sheetKey, extra) {
   return '<div class="section-head"><h2 class="section-title">' + esc(title) + '</h2>' +
-    (extra || "") + addBtn(sheetKey, "+ Tambah") + '</div>';
+    (extra || "") + addBtn(sheetKey, "+ Add") + '</div>';
 }
 
 function addBtn(sheetKey, label) {
@@ -866,13 +866,13 @@ function openAdd(sheetKey) {
   const blank = {};
   EDIT_FIELDS[sheetKey].forEach(f => { blank[f.key] = defaultValue(sheetKey, f); });
   formState = { mode: "add", sheetKey: sheetKey, row: null, original: blank };
-  showForm("Tambah " + SHEET_LABELS[sheetKey], blank, false);
+  showForm("Add " + SHEET_LABELS[sheetKey], blank, false);
 }
 
 function openEdit(sheetKey, row) {
   closeGuest();
   const rec = (appData[sheetKey] || []).find(r => r._row === row);
-  if (!rec) return toast("Data sudah tidak ada. Refresh dulu.");
+  if (!rec) return toast("This data no longer exists. Refresh first.");
 
   formState = { mode: "edit", sheetKey: sheetKey, row: row, original: rec };
   showForm("Edit " + SHEET_LABELS[sheetKey], rec, true);
@@ -898,7 +898,7 @@ function closeForm() {
 function setFormBusy(busy) {
   document.getElementById("editSave").disabled = busy;
   document.getElementById("editDelete").disabled = busy;
-  document.getElementById("editSave").innerText = busy ? "Menyimpan..." : "Simpan";
+  document.getElementById("editSave").innerText = busy ? "Saving..." : "Save";
 }
 
 /* ---------- NILAI DEFAULT & PILIHAN ---------- */
@@ -959,19 +959,19 @@ function fieldInput(sheetKey, f, v) {
   return '<input class="input" type="text" ' + key + ' value="' + esc(v) + '">';
 }
 
-/** Dropdown. Kalau src, ada "+ Baru…" yang memunculkan kotak isian. */
+/** Dropdown. Kalau src, ada "+ New…" yang memunculkan kotak isian. */
 function selectHtml(sheetKey, f, v) {
   let opts = optionList(sheetKey, f);
   if (v && opts.indexOf(v) === -1) opts = [v].concat(opts);   // nilai lama tetap tampil apa adanya
 
   const isNew = f.src && !v && opts.length === 0;
-  const blank = !v && opts.length > 0 ? '<option value="" selected>— pilih —</option>' : '';
+  const blank = !v && opts.length > 0 ? '<option value="" selected>— choose —</option>' : '';
 
   return '<select class="input" data-key="' + f.key + '">' + blank +
     opts.map(o => '<option value="' + esc(o) + '"' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>').join("") +
     (f.src ? '<option value="__new__"' + (isNew ? ' selected' : '') + '>+ Baru…</option>' : '') +
     '</select>' +
-    (f.src ? '<input class="input new-input' + (isNew ? '' : ' hidden') + '" type="text" data-new-for="' + f.key + '" placeholder="Tulis nilai baru">' : '');
+    (f.src ? '<input class="input new-input' + (isNew ? '' : ' hidden') + '" type="text" data-new-for="' + f.key + '" placeholder="Type a new value">' : '');
 }
 
 /** Checkbox alergen. Nilai lama yang tidak ada di daftar tetap ditampilkan dan dicentang. */
@@ -984,7 +984,7 @@ function checksHtml(f, v) {
   ).join("") + '</div>';
 }
 
-/** Kotak "+ Baru…" muncul hanya saat dipilih. */
+/** Kotak "+ New…" muncul hanya saat dipilih. */
 function onFormChange(e) {
   if (e.target.matches && e.target.matches('input[type="file"][data-file]')) {
     onFileChosen(e.target);
@@ -1033,13 +1033,13 @@ function readValue(f) {
   if (f.input === "phone") return raw.replace(/\D/g, "");
   if (f.input === "url") {
     const t = raw.trim();
-    if (t && !/^https?:\/\//i.test(t)) throw new Error(f.label + " harus diawali https://");
+    if (t && !/^https?:\/\//i.test(t)) throw new Error(f.label + " must start with https://");
     return t;
   }
   if (el.tagName === "SELECT" && raw === "__new__") {
     const box = document.querySelector('#editForm [data-new-for="' + f.key + '"]');
     const nv = box ? box.value.trim() : "";
-    if (!nv) throw new Error("Isi nilai baru untuk " + f.label + ".");
+    if (!nv) throw new Error("Enter a new value for " + f.label + ".");
     return nv;
   }
   return raw.trim();
@@ -1060,10 +1060,10 @@ async function saveForm() {
     const newValues = readForm();
     if (mode === "add") {
       await api("addRow", [sessionToken, sheetKey, newValues]);
-      toast("Ditambahkan.");
+      toast("Added.");
     } else {
       const res = await api("updateRow", [sessionToken, sheetKey, row, oldValues, newValues]);
-      toast(res.changed ? "Tersimpan." : "Tidak ada perubahan.");
+      toast(res.changed ? "Saved." : "No changes.");
     }
     closeForm();
     loadData();
@@ -1074,7 +1074,7 @@ async function saveForm() {
 
 async function deleteForm() {
   if (!formState || formState.mode !== "edit") return;
-  if (!confirm("Hapus baris ini? Isinya dicatat di changelog, tapi tidak bisa dibatalkan dari app.")) return;
+  if (!confirm("Delete this row? Its content is logged in the changelog, but this cannot be undone in the app.")) return;
 
   const sheetKey = formState.sheetKey;
   const row = formState.row;
@@ -1085,7 +1085,7 @@ async function deleteForm() {
 
   try {
     await api("deleteRow", [sessionToken, sheetKey, row, oldValues]);
-    toast("Dihapus.");
+    toast("Deleted.");
     closeForm();
     loadData();
   } catch (e) {
@@ -1126,14 +1126,14 @@ function uploadHtml(f, v) {
   const isPhoto = f.input === "photo";
   const preview = isPhoto && v
     ? '<img class="upload-preview" data-preview="' + f.key + '" src="' + imgUrl(v) + '" alt="">'
-    : '<div class="upload-preview empty" data-preview="' + f.key + '">' + (isPhoto ? 'Belum ada foto' : 'Belum ada file') + '</div>';
+    : '<div class="upload-preview empty" data-preview="' + f.key + '">' + (isPhoto ? 'No photo yet' : 'No file yet') + '</div>';
   const note = !isPhoto
-    ? '<div class="small muted" data-note="' + f.key + '">' + (v ? 'File sudah tersimpan' : '') + '</div>'
+    ? '<div class="small muted" data-note="' + f.key + '">' + (v ? 'File already saved' : '') + '</div>'
     : '';
 
   return '<div class="upload">' + preview +
     '<input type="hidden" data-key="' + f.key + '" value="' + esc(v) + '">' +
-    '<label class="btn small outline upload-btn">' + (v ? 'Ganti ' : 'Pilih ') + (isPhoto ? 'foto' : 'file PDF') +
+    '<label class="btn small outline upload-btn">' + (v ? 'Change ' : 'Choose ') + (isPhoto ? 'photo' : 'PDF file') +
       '<input type="file" hidden data-file="' + f.key + '" accept="' + (isPhoto ? 'image/*' : 'application/pdf') + '">' +
     '</label>' +
     '<div class="small muted" data-status="' + f.key + '"></div>' + note +
@@ -1156,12 +1156,12 @@ async function onFileChosen(input) {
   const hidden = document.querySelector('#editForm [data-key="' + f.key + '"]');
 
   if (isPhoto ? !file.type.startsWith("image/") : file.type !== "application/pdf") {
-    status.innerText = isPhoto ? "Pilih file gambar." : "Pilih file PDF.";
+    status.innerText = isPhoto ? "Please choose an image file." : "Please choose a PDF file.";
     return;
   }
 
   setFormBusy(true);
-  status.innerText = "Mengunggah...";
+  status.innerText = "Uploading...";
   try {
     let base64, mime, name;
     if (isPhoto) {
@@ -1169,7 +1169,7 @@ async function onFileChosen(input) {
       mime = "image/jpeg";
       name = file.name.replace(/\.[^.]+$/, "") + ".jpg";
     } else {
-      if (file.size > 5 * 1024 * 1024) throw new Error("File terlalu besar. Maksimal 5 MB.");
+      if (file.size > 5 * 1024 * 1024) throw new Error("File is too large. Maximum 5 MB.");
       base64 = await readAsBase64(file);
       mime = "application/pdf";
       name = file.name;
@@ -1177,13 +1177,13 @@ async function onFileChosen(input) {
 
     const res = await api("uploadFile", [sessionToken, base64, mime, name]);
     hidden.value = res.id;
-    status.innerText = "Terunggah.";
+    status.innerText = "Uploaded.";
 
     if (isPhoto) {
       document.querySelector('[data-preview="' + f.key + '"]').outerHTML =
         '<img class="upload-preview" data-preview="' + f.key + '" src="' + imgUrl(res.id) + '" alt="">';
     } else {
-      document.querySelector('[data-note="' + f.key + '"]').innerText = "File baru sudah terunggah.";
+      document.querySelector('[data-note="' + f.key + '"]').innerText = "New file uploaded.";
     }
   } catch (e) {
     if (isSessionExpired(e)) {
@@ -1211,7 +1211,7 @@ function resizeImage(file, maxSide) {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("Gambar tidak bisa dibaca. Coba foto lain (JPG atau PNG)."));
+      reject(new Error("Can't read this image. Try another photo (JPG or PNG)."));
     };
     img.src = url;
   });
@@ -1221,7 +1221,7 @@ function readAsBase64(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result).split(",")[1]);
-    reader.onerror = () => reject(new Error("File tidak bisa dibaca."));
+    reader.onerror = () => reject(new Error("Can't read this file."));
     reader.readAsDataURL(file);
   });
 }

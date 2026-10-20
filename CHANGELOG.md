@@ -1,110 +1,81 @@
 # Changelog — Reload Staff Hub (frontend)
 
-Setiap update frontend menaikkan versi di `app.js` (`APP_VERSION`), `style.css?v=` dan `app.js?v=` di `index.html`, dan ditulis di sini.
+Each frontend update bumps `APP_VERSION` in `app.js` and the `?v=` values in `index.html`, and is recorded here.
+Backend (`Code.gs`) versions are listed separately at the bottom.
 
-Versi backend (`Code.gs`) dicatat terpisah di bawah.
+## 2.20.0
+- All user-facing text is now in English (labels, buttons, messages, errors).
+- Upsell "Tipe" values changed: `Kalimat` is now `Line`, `Aturan` is now `Rule`. Update the existing cells in the `11_UpsellToday` sheet.
 
 ## 2.19.0
-- Halaman Our Guests lengkap, dibuka dari tombol "Lihat semua" di kolom Our Guests.
-- Cari nama atau catatan, filter kategori (pill), urutan (Terbaru, Terlama, Nama A-Z, Nama Z-A), dan tampilan grid atau list.
-- Tampil 12 tamu per halaman, dengan tombol "Tampilkan lebih banyak".
+- Full "Our Guests" page, opened from "View all" on Home: search, category filter, sort, grid or list view, and "Show more" paging (12 per page).
 
 ## 2.18.0
-- Sapaan di Home memakai Nickname dari HR. Kalau kosong, pakai nama depan.
-- Our Guests di Home: 5 tamu terakhir, urut dari yang terbaru.
-- Foto tamu bisa diklik untuk melihat detail: foto besar, nama, kategori, dan catatan lengkap.
-- Catatan panjang dipotong, dengan tombol "Baca selengkapnya".
-- Perbaikan: di 2.17.0, bagian Our Guests bisa error saat ada data tamu. Sudah diperbaiki.
-- Backend 2.13.0: membaca kolom Nickname dari HR (opsional).
+- Greeting uses the HR nickname (falls back to first name).
+- Our Guests on Home shows the 5 most recent guests, newest first.
+- Tapping a guest photo opens a detail view. Long notes can be expanded with "Read more".
+- Fix: Our Guests could error when guest data existed (regression in 2.17.0).
 
 ## 2.17.0
-- Login lebih cepat: daftar karyawan dari HR dicache 10 menit. PIN disimpan sebagai hash.
-- Rapi-rapi kode: cek sesi habis di satu tempat, pola daftar per kelompok di satu helper, bagian hari di satu fungsi, dan cara ambil sheet di satu tempat.
+- Faster login: the HR employee list is cached for 10 minutes, and PINs are stored as hashes.
+- Code cleanup: shared helpers for session-expired checks, grouped lists, day part, and sheet lookup.
 
 ## 2.16.0
-- Foto dan jabatan karyawan diambil dari HR Sheet (kolom Photo dan Job Title/Position). Kalau foto diganti di HR, berubah di app dalam 10 menit.
-- Header: judul lebih besar, profil di kanan berisi foto, nama, dan jabatan. Tier tidak ditampilkan lagi.
-- Sapaan di Home dikecilkan.
-- Important Info dihapus dari app.
-- Home: Our Guests, Upsell Today, dan Staff Bulletin dalam satu baris (tiga kolom di desktop, tersusun di HP).
-- Tab: Home dengan ikon rumah. Label: Food Bible, Beverage Bible, SOP, Our Teams, Reload Academy, About Reload. Tab Guests dipindah ke Home sebagai Our Guests.
-- Backend 2.11.0: membaca kolom Photo dan Job Title/Position dari HR (opsional), tabel `01_ImportantInfo` tidak dibaca lagi.
+- Photo and job title come from the HR sheet. The header shows photo, name, and job title.
+- Important Info removed.
+- Home shows three columns: Our Guests, Upsell Today, Staff Bulletin (stacked on mobile).
+- Tabs: Home icon, Food Bible, Beverage Bible, SOP, Our Teams, Reload Academy, About Reload.
 
 ## 2.15.0
-- Upsell tidak lagi pakai kolom Status. Yang tampil di Home hanya baris dengan tanggal hari ini.
-- Kalau tidak ada baris untuk hari ini, Upsell menampilkan "Tidak ada upsell untuk hari ini."
-- Backend 2.10.0: kolom Status dihapus dari skema tab `11_UpsellToday`. Kolom Status yang masih ada di sheet tidak dibaca dan boleh dihapus.
+- Upsell no longer has a Status column. Home shows only rows dated today.
 
 ## 2.14.0
-- Home: Upsell Today, Important Info, dan Staff Bulletin dalam satu baris. Tiga kolom di desktop, dua kolom di tablet, satu kolom (urut: Upsell, Info, Bulletin) di HP.
-- Tombol Edit dan Tambah lebih besar di HP, supaya mudah disentuh.
+- Home layout: three columns on desktop, two on tablet, one on mobile. Larger tap targets on mobile.
 
 ## 2.13.0
-- Upsell Today sekarang per item: satu baris per item dengan kolom Tipe, Sesi, Shift, Item, Target, Satuan, Status.
-- Tampilan Upsell dikelompokkan per sesi (Morning, Afternoon, Evening), lalu kalimat upsell, lalu aturan.
-- Field Target hanya menerima angka.
-- Backend 2.9.0: skema tab `11_UpsellToday` berubah (lihat kolom di atas).
+- Upsell is per item: Type, Session, Shift, Item, Target, Unit, Status. Grouped by session.
 
 ## 2.12.0
-- Tab sheet baru `11_UpsellToday` (kolom: Date, Title, Description, Status). Upsell Today tidak lagi dicampur dengan Important Info.
-- Home dua kolom: Upsell Today di kiri, Important Info di kanan. Di HP keduanya tersusun vertikal.
-- Backend 2.8.0: sheet `11_UpsellToday` ikut dibaca dan bisa ditambah, diedit, dan dihapus dengan aturan yang sama.
+- Upsell moved to its own sheet tab, `11_UpsellToday`.
 
 ## 2.11.0
-- Loading: skeleton saat data dimuat, spinner saat cek sesi, dan tombol "Coba lagi" kalau gagal.
-- Item nonaktif (hanya untuk editor) dilipat dalam bagian "Nonaktif (N)" yang tertutup, di Home (bulletin) dan Guests.
-- Satu definisi "aktif" (`isActive`) untuk semua pengecekan status.
+- Loading states (skeleton and spinner). Inactive items folded under an "Inactive (N)" section.
 
 ## 2.10.0
-- Foto (anggota tim, menu, bulletin, tamu) dan file SOP (PDF) diunggah dari perangkat. Tidak perlu lagi menempel link Google Drive.
-- Foto dikecilkan di browser sebelum diunggah. Ukuran file maksimal 5 MB.
-- Backend 2.7.0: fungsi `uploadFile` (hanya untuk tier selain Staff), menyimpan file ke folder "Reload Staff Hub — Upload" di Drive dan membagikannya "siapa pun yang punya link: lihat".
+- Photos and PDFs uploaded from the device. No more pasted Drive links.
 
 ## 2.9.0
-- Form tambah dan edit tidak lagi pakai ketik bebas untuk isian yang bisa dipilih:
-  - Tanggal: date picker, formatnya otomatis seperti sheet (`5 Oct 2026`).
-  - Kategori, Departemen, Jabatan, Tipe, Penulis, Waktu baca, dan Bagian: dropdown dari nilai yang sudah ada di sheet, plus "+ Baru…".
-  - Alergen: checkbox.
-  - Harga: angka saja, otomatis pakai titik ribuan.
-  - Nomor WhatsApp: angka saja, default `62`.
-  - Foto dan file SOP: tempel link Google Drive, ID-nya diambil otomatis.
-  - Link materi dan video: harus diawali `https://`.
-  - Terakhir diupdate: diisi tanggal hari ini, tidak bisa diketik.
-- Nilai yang tidak dikenali (misalnya tanggal format lama) tidak diubah diam-diam.
+- Forms use dropdowns, date pickers, and checkboxes instead of free typing.
 
 ## 2.8.0
-- Dua mode akses, label di header: **Mode baca** (staff) dan **Mode edit** (non-staff).
-- Hak edit ditentukan backend saja (`canEdit` dari login dan checkSession). Frontend tidak lagi mengecek tier sendiri.
-- Editor melihat item nonaktif di Home (bulletin) dan Guests, diberi label "Nonaktif" dan tampil pudar. Staff hanya melihat item aktif.
-- Backend 2.6.0: kolom sheet dibaca lewat nama header. Urutan kolom di sheet boleh berubah.
-
-## 2.7.1
-- Kontras teks dinaikkan: teks sekunder dan deskripsi sekarang Bone (80%), tidak lagi abu-abu gelap.
+- Two access modes shown in the header. Edit rights decided by the backend only.
 
 ## 2.7.0
-- Warna mengikuti palet brand Reload (Rich Black, Bone, French Beige, Burgundy, Wasabi, Zinnwaldite).
-- Font Poppins, sama dengan Reload 360.
-- Logo R dipasang di login, header, dan favicon.
+- Brand palette and Poppins font. Logo added.
 
 ## 2.6.0
-- Desain ulang: header dengan profil user, menu tab pill, kartu grid untuk menu dan tim, hero sapaan di Home.
-- Versi frontend tampil di footer.
-- Font Inter dari Google Fonts.
+- Redesigned UI: profile header, pill tabs, grid cards, hero greeting.
 
 ## 2.5.0
-- Tambah dan hapus baris (hard delete), semua lewat backend.
-- Hapus baris dicatat lengkap di `99_Changelog` sebelum dihapus.
+- Add and delete rows, all through the backend. Deletes are logged in the changelog first.
 
 ## 2.4.0
-- Edit isi baris lewat form.
-- Cek konflik: simpan ditolak kalau isi sheet sudah berubah sejak form dibuka.
-- Setiap edit dicatat di `99_Changelog`.
+- Edit rows in a form. Conflict check so newer changes are not overwritten.
 
 ## 2.3.0
-- Frontend dipisah ke GitHub Pages. Backend jadi API JSON di Apps Script.
+- Frontend moved to GitHub Pages. Backend became a JSON API in Apps Script.
 
 ## Backend (Code.gs)
-- 2.5.0: `addRow`, `deleteRow`, dan `updateRow` dengan lock dan changelog.
-- 2.4.0: `updateRow` dengan cek konflik.
-- 2.3.0: API JSON (`doPost`) dengan whitelist fungsi.
-- 2.2.0: rebuild login NIK + PIN, sesi 6 jam, kunci 15 menit setelah 5 kali salah PIN.
+- 2.14.0: English messages and log text.
+- 2.13.0: reads Nickname, Photo, and Job Title/Position from HR (optional columns).
+- 2.12.0: faster login (cached HR index, hashed PINs), duplicate lookups removed.
+- 2.11.0: Important Info removed from the app. HR photo and job title added.
+- 2.10.0: Upsell rows have no Status column.
+- 2.9.0: Upsell per item.
+- 2.8.0: Upsell sheet tab added.
+- 2.7.0: photo and PDF upload.
+- 2.6.0: columns read by header name. One definition for edit rights.
+- 2.5.0: add and delete rows.
+- 2.4.0: conflict check on edit.
+- 2.3.0: JSON API with a function whitelist.
+- 2.2.0: NIK + PIN login, 6-hour session, 15-minute lock after 5 wrong PINs.
