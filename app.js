@@ -1,10 +1,10 @@
 /****************************************
  * RELOAD STAFF HUB — FRONTEND (GitHub Pages)
- * Version : 2.18.0 (Our Guests: 5 terbaru, foto bisa dibuka, catatan bisa dibaca penuh; sapaan pakai nickname)
+ * Version : 2.19.0 (halaman Our Guests lengkap: cari, filter kategori, urutan, grid/list)
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.18.0";
+const APP_VERSION = "2.19.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -129,6 +129,9 @@ let currentCanEdit = false;   // dari backend (canEditTier_), satu sumber kebena
 let appData = null;
 let activeTab = "home";
 let searchText = "";
+let guestsLanding = false;
+const GUESTS_PAGE_SIZE = 12;
+let guestFilter = { q: "", cat: -1, sort: "newest", view: "grid", shown: GUESTS_PAGE_SIZE };
 let formState = null;   // { mode: "add" | "edit", sheetKey, row, original }
 
 /* ---------- API ---------- */
@@ -333,6 +336,7 @@ function renderTabbar() {
 
 function showTab(key) {
   activeTab = key;
+  guestsLanding = false;
   searchText = "";
   renderTabbar();
   renderTab();
@@ -343,6 +347,11 @@ function renderTab() {
   const app = document.getElementById("app");
   if (!appData) {
     app.innerHTML = skeletonHtml();
+    return;
+  }
+
+  if (guestsLanding) {
+    app.innerHTML = viewGuestsLanding();
     return;
   }
 
@@ -379,7 +388,8 @@ function viewHome() {
 
     '<div class="home-grid">' +
       homeCol("Our Guests", "guests",
-        guests.length ? listWithInactive(guests, guestCard) : emptyState("Tidak ada catatan tamu aktif.")) +
+        guests.length ? listWithInactive(guests, guestCard) : emptyState("Tidak ada catatan tamu aktif."),
+        '<button class="ghost small-link" type="button" onclick="openGuestsLanding()">Lihat semua</button>') +
       homeCol("Upsell Today", "upsell", upsellPanel()) +
       homeCol("Staff Bulletin", "bulletin",
         news.length ? listWithInactive(news, bulletinCard) : emptyState("Belum ada bulletin aktif.")) +
@@ -387,8 +397,8 @@ function viewHome() {
 }
 
 /** Satu kolom di Home: judul + tombol tambah, lalu isinya. */
-function homeCol(title, sheetKey, body) {
-  return '<section class="home-col">' + sectionHead(title, sheetKey) + body + '</section>';
+function homeCol(title, sheetKey, body, extra) {
+  return '<section class="home-col">' + sectionHead(title, sheetKey, extra) + body + '</section>';
 }
 
 /**
@@ -645,6 +655,133 @@ function closeGuest() {
   if (modal) modal.classList.add("hidden");
 }
 
+/* ---------- OUR GUESTS: halaman lengkap ---------- */
+
+function openGuestsLanding() {
+  guestsLanding = true;
+  guestFilter = { q: "", cat: -1, sort: "newest", view: "grid", shown: GUESTS_PAGE_SIZE };
+  renderTab();
+  window.scrollTo(0, 0);
+}
+
+function viewGuestsLanding() {
+  return '<div class="gl-head">' +
+      '<button class="ghost" type="button" onclick="showTab(\'home\')">← Kembali</button>' +
+      '<h2 class="section-title">Our Guests</h2>' +
+      addBtn("guests", "+ Tambah") +
+    '</div>' +
+    '<div class="gl-chips" id="glChips">' + guestChips() + '</div>' +
+    '<div class="gl-toolbar">' +
+      '<input class="input gl-search" type="search" placeholder="Cari nama, catatan..." value="' + esc(guestFilter.q) +
+        '" oninput="guestSearch(this.value)">' +
+      '<select class="input gl-sort" onchange="guestSort(this.value)">' +
+        [["newest", "Terbaru"], ["oldest", "Terlama"], ["name-asc", "Nama A-Z"], ["name-desc", "Nama Z-A"]]
+          .map(o => '<option value="' + o[0] + '"' + (guestFilter.sort === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join("") +
+      '</select>' +
+      '<div class="seg">' +
+        '<button type="button" class="' + (guestFilter.view === "grid" ? "on" : "") + '" aria-label="Tampilan grid" onclick="guestView(\'grid\')">▦</button>' +
+        '<button type="button" class="' + (guestFilter.view === "list" ? "on" : "") + '" aria-label="Tampilan list" onclick="guestView(\'list\')">☰</button>' +
+      '</div>' +
+    '</div>' +
+    '<div id="glList">' + guestListHtml() + '</div>';
+}
+
+/** Pilihan kategori: "Semua" plus kategori dari data. Pilihan dikirim sebagai nomor, bukan teks. */
+function guestCategories() {
+  return distinctValues("guests", "category");
+}
+
+function guestChips() {
+  const cats = guestCategories();
+  const visible = appData.guests.filter(showItem);
+  const chip = (idx, label, n) =>
+    '<button type="button" class="chip-btn' + (guestFilter.cat === idx ? ' on' : '') +
+      '" onclick="guestCategory(' + idx + ')">' + esc(label) + '<span>' + n + '</span></button>';
+  return chip(-1, "Semua", visible.length) +
+    cats.map((c, i) => chip(i, c, visible.filter(r => r.category === c).length)).join("");
+}
+
+function guestListHtml() {
+  const cats = guestCategories();
+  let rows = appData.guests.filter(showItem);
+  if (guestFilter.cat >= 0) rows = rows.filter(r => r.category === cats[guestFilter.cat]);
+  const q = guestFilter.q.trim().toLowerCase();
+  if (q) rows = rows.filter(r => [r.guest, r.title, r.description, r.category].join(" ").toLowerCase().indexOf(q) !== -1);
+  rows = sortGuests(rows, guestFilter.sort);
+
+  if (!rows.length) return emptyState("Tidak ada tamu yang cocok.");
+
+  const shown = rows.slice(0, guestFilter.shown);
+  const body = guestFilter.view === "grid"
+    ? '<div class="guest-grid">' + shown.map(guestTile).join("") + '</div>'
+    : '<div class="guest-list">' + shown.map(guestLine).join("") + '</div>';
+  const more = rows.length > shown.length
+    ? '<button class="btn outline" type="button" onclick="guestMore()">Tampilkan lebih banyak</button>'
+    : '';
+  return body +
+    '<div class="gl-more"><p class="muted small">Menampilkan ' + shown.length + ' dari ' + rows.length + ' tamu</p>' + more + '</div>';
+}
+
+function sortGuests(rows, mode) {
+  if (mode === "oldest") return newestFirst(rows).reverse();
+  if (mode === "name-asc") return rows.slice().sort((a, b) => String(a.guest).localeCompare(String(b.guest), "id", { sensitivity: "base" }));
+  if (mode === "name-desc") return rows.slice().sort((a, b) => String(b.guest).localeCompare(String(a.guest), "id", { sensitivity: "base" }));
+  return newestFirst(rows);
+}
+
+function guestPhoto(r, cls) {
+  return r.image
+    ? '<img class="' + cls + '" src="' + imgUrl(r.image) + '" alt="" loading="lazy">'
+    : '<div class="' + cls + ' gph">' + esc(initial(r.guest)) + '</div>';
+}
+
+function guestTile(r) {
+  return '<button class="guest-tile' + inactiveClass(r) + '" type="button" onclick="openGuest(' + r._row + ')">' +
+    guestPhoto(r, "guest-tile-img") +
+    '<div class="guest-tile-body"><strong>' + esc(r.guest) + '</strong>' +
+      '<span class="badge">' + esc(r.category) + '</span>' + statusBadge(r) +
+      '<span class="small muted">' + esc(r.date) + '</span></div>' +
+  '</button>';
+}
+
+function guestLine(r) {
+  return '<button class="guest-line' + inactiveClass(r) + '" type="button" onclick="openGuest(' + r._row + ')">' +
+    guestPhoto(r, "guest-line-img") +
+    '<span class="guest-line-body"><strong>' + esc(r.guest) + '</strong>' +
+      '<span class="small muted">' + esc(r.category) + ' · ' + esc(r.date) + '</span></span>' +
+    statusBadge(r) +
+    '<span class="chev">›</span>' +
+  '</button>';
+}
+
+function guestSearch(value) {
+  guestFilter.q = value;
+  guestFilter.shown = GUESTS_PAGE_SIZE;
+  document.getElementById("glList").innerHTML = guestListHtml();
+}
+
+function guestCategory(idx) {
+  guestFilter.cat = idx;
+  guestFilter.shown = GUESTS_PAGE_SIZE;
+  renderTab();
+}
+
+function guestSort(mode) {
+  guestFilter.sort = mode;
+  guestFilter.shown = GUESTS_PAGE_SIZE;
+  renderTab();
+}
+
+function guestView(mode) {
+  guestFilter.view = mode;
+  renderTab();
+}
+
+function guestMore() {
+  guestFilter.shown += GUESTS_PAGE_SIZE;
+  renderTab();
+}
+
 function viewAbout() {
   const rows = appData.about.filter(r => r.section);
   return sectionHead("About Reload", "about") +
@@ -708,9 +845,9 @@ function statusBadge(rec) {
   return ' <span class="badge off">Nonaktif</span>';
 }
 
-function sectionHead(title, sheetKey) {
+function sectionHead(title, sheetKey, extra) {
   return '<div class="section-head"><h2 class="section-title">' + esc(title) + '</h2>' +
-    addBtn(sheetKey, "+ Tambah") + '</div>';
+    (extra || "") + addBtn(sheetKey, "+ Tambah") + '</div>';
 }
 
 function addBtn(sheetKey, label) {

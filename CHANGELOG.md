@@ -4,6 +4,11 @@ Setiap update frontend menaikkan versi di `app.js` (`APP_VERSION`), `style.css?v
 
 Versi backend (`Code.gs`) dicatat terpisah di bawah.
 
+## 2.19.0
+- Halaman Our Guests lengkap, dibuka dari tombol "Lihat semua" di kolom Our Guests.
+- Cari nama atau catatan, filter kategori (pill), urutan (Terbaru, Terlama, Nama A-Z, Nama Z-A), dan tampilan grid atau list.
+- Tampil 12 tamu per halaman, dengan tombol "Tampilkan lebih banyak".
+
 ## 2.18.0
 - Sapaan di Home memakai Nickname dari HR. Kalau kosong, pakai nama depan.
 - Our Guests di Home: 5 tamu terakhir, urut dari yang terbaru.
