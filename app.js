@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.21.0";
+const APP_VERSION = "2.22.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -138,15 +138,27 @@ let formState = null;   // { mode: "add" | "edit", sheetKey, row, original }
  * Panggil backend Apps Script. Pakai text/plain supaya tidak kena preflight CORS.
  * Balasan: { ok, data } atau { ok:false, error }.
  */
+const API_TIMEOUT_MS = 20000;
+
 async function api(fn, args) {
-  const res = await fetch(CONFIG.API_URL, {
-    method: "POST",
-    headers: { "Content-Type": "text/plain;charset=utf-8" },
-    body: JSON.stringify({ fn: fn, args: args || [] })
-  });
-  const json = await res.json();
-  if (!json.ok) throw new Error(json.error || "Failed to load data.");
-  return json.data;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  try {
+    const res = await fetch(CONFIG.API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify({ fn: fn, args: args || [] }),
+      signal: controller.signal
+    });
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || "Failed to load data.");
+    return json.data;
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("The server is taking too long. Please try again.");
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /* ---------- STORAGE (aman kalau diblokir browser) ---------- */
@@ -279,13 +291,32 @@ function endSession() {
   showLogin();
 }
 
+/** Sheets that may be missing from the backend response are treated as empty. */
+const DATA_KEYS = ["importantInfo", "upsell", "bulletin", "inspiration", "food", "beverage", "sop", "teams", "about", "guests", "academy"];
+
+function withDefaults(data) {
+  const out = Object.assign({}, data);
+  DATA_KEYS.forEach(k => { if (!Array.isArray(out[k])) out[k] = []; });
+  return out;
+}
+
+let loadHintTimer = null;
+
 async function loadData() {
+  renderTab();   // shows the skeleton right away while data is loading
+  clearTimeout(loadHintTimer);
+  loadHintTimer = setTimeout(function () {
+    const hint = document.getElementById("loadHint");
+    if (hint) hint.innerText = "Still loading. The first load after a while can take a few seconds.";
+  }, 4000);
   try {
-    appData = await api("getAppData", [sessionToken]);
+    appData = withDefaults(await api("getAppData", [sessionToken]));
     renderTab();
   } catch (e) {
     handleApiError(e);
-    if (!appData) showLoadError();
+    if (!appData) showLoadError(e.message);
+  } finally {
+    clearTimeout(loadHintTimer);
   }
 }
 
@@ -295,12 +326,14 @@ function skeletonHtml() {
     '<div class="skeleton"></div>' +
     '<div class="skeleton"></div>' +
     '<div class="skeleton"></div>' +
+    '<p id="loadHint" class="muted small center"></p>' +
     '</div>';
 }
 
-function showLoadError() {
+function showLoadError(message) {
   document.getElementById("app").innerHTML =
-    '<div class="empty">Failed to load data. <br><button class="ghost" type="button" onclick="retryLoad()">Try again</button></div>';
+    '<div class="empty">' + esc(message || "Failed to load data.") +
+    '<br><button class="ghost" type="button" onclick="retryLoad()">Try again</button></div>';
 }
 
 function retryLoad() {
@@ -348,10 +381,16 @@ function renderTab() {
     return;
   }
 
-  if (guestsLanding) {
-    app.innerHTML = viewGuestsLanding();
-    return;
+  try {
+    app.innerHTML = renderActiveView();
+  } catch (e) {
+    console.error(e);
+    app.innerHTML = '<div class="empty">Something went wrong while showing this page.<br><small>' + esc(e.message) + '</small></div>';
   }
+}
+
+function renderActiveView() {
+  if (guestsLanding) return viewGuestsLanding();
 
   let html = "";
   if (activeTab === "home")          html = viewHome();
@@ -362,7 +401,7 @@ function renderTab() {
   else if (activeTab === "academy")  html = viewSearchable("academy");
   else if (activeTab === "about")    html = viewAbout();
 
-  app.innerHTML = html;
+  return html;
 }
 
 /* ---------- HOME ---------- */

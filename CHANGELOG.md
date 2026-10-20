@@ -3,6 +3,15 @@
 Each frontend update bumps `APP_VERSION` in `app.js` and the `?v=` values in `index.html`, and is recorded here.
 Backend (`Code.gs`) versions are listed separately at the bottom.
 
+## 2.22.0
+- Faster loading: sheet data is cached for 60 seconds on the server and cleared on every change.
+- Requests time out after 20 seconds, with a clear message and a "Try again" button.
+- A "Still loading" hint appears after 4 seconds.
+
+## 2.21.1
+- Missing data from the backend is treated as empty, so Home no longer goes blank.
+- If a page fails to render, the error is shown on screen instead of a blank page.
+
 ## 2.21.0
 - Upsell shows items only. Lines and rules are removed.
 - The upsell sheet has the columns Date, Session, Shift, Item, Target, Unit.

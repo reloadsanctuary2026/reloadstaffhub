@@ -567,3 +567,5 @@ ul.plain li:last-child { border-bottom: 0; }
   .guest-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
   .gl-sort { flex: 1 1 100%; }
 }
+
+.center { text-align: center; }
