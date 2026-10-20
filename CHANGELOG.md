@@ -3,6 +3,14 @@
 Each frontend update bumps `APP_VERSION` in `app.js` and the `?v=` values in `index.html`, and is recorded here.
 Backend (`Code.gs`) versions are listed separately at the bottom.
 
+## 2.26.2
+- Kategori tamu sekarang pilihan tetap: Birthday, Preference, VIP, Complaint. Daftar ini ada di config dan harus sama dengan backend.
+- Label "Alergen" diperbaiki menjadi "Allergen" di kartu menu.
+
+## 2.26.1
+- Tanggal bulan Indonesia di sheet (Okt, Agu, Des, Mei) sekarang terbaca. Sebelumnya tamu bulan Oktober tidak terurut dengan benar.
+- Tamu dengan tanggal sama diurutkan nama A-Z.
+
 ## 2.26.0
 - Translated the last Indonesian text: chip "All", "Show more", "+ New…", and the changelog row prefix "Row".
 - Backend 2.18.0: changelog rows say "Row N" instead of "Baris N".
@@ -98,6 +106,8 @@ Backend (`Code.gs`) versions are listed separately at the bottom.
 - Frontend moved to GitHub Pages. Backend became a JSON API in Apps Script.
 
 ## Backend (Code.gs)
+- 2.20.0: satu pintu untuk merapikan isi baris (tanggal, status, kategori tamu, spasi nama) saat dibaca, ditulis, dan dicek konflik. Tambah `auditData()` (cek saja), `previewRepairs()` (lihat perubahan), dan `applyRepairs()` (tulis perbaikan, dicatat di changelog). Kategori tamu dipaksa ke daftar tetap.
+- 2.19.0: tanggal di sheet (termasuk nama bulan Indonesia seperti Okt) dibaca dan dikirim ke app dalam format baku, mis. `20 Oct 2026`. Sheet tidak diubah. Cek konflik saat edit ikut memakai format ini.
 - 2.14.0: English messages and log text.
 - 2.13.0: reads Nickname, Photo, and Job Title/Position from HR (optional columns).
 - 2.12.0: faster login (cached HR index, hashed PINs), duplicate lookups removed.

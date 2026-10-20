@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.26.0";
+const APP_VERSION = "2.26.2";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -31,6 +31,8 @@ const SESI_ORDER = ["Morning", "Afternoon", "Evening"];
 const ALLERGEN_OPTIONS = ["Gluten", "Milk", "Egg", "Nut", "Seafood", "Soy"];
 const DIFFICULTY_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
 const SECTION_OPTIONS = ["Company Story", "Vision", "Mission", "Identity & Essences", "Core Values"];
+/* Kategori tamu. Sama dengan GUEST_CATEGORIES di backend (Code.gs). Kalau berubah, ubah keduanya. */
+const GUEST_CATEGORIES = ["Birthday", "Preference", "VIP", "Complaint"];
 
 /* Start hour of each shift. A shift is "now" from its start until the next shift starts. */
 const SHIFT_START = { "M6": "06:00", "M8": "08:00", "M11": "11:00", "MD12": "12:00", "E2": "14:30" };
@@ -84,7 +86,7 @@ const EDIT_FIELDS = {
   ],
   guests: [
     { key: "date",        label: "Date", input: "date" },
-    { key: "category",    label: "Category", src: true },
+    { key: "category",    label: "Category", options: GUEST_CATEGORIES },
     { key: "guest",       label: "Guest name" },
     { key: "title",       label: "Title" },
     { key: "description", label: "Description", input: "multi" },
@@ -577,7 +579,7 @@ function menuCard(r, sheetKey) {
       '<div class="tile-head"><h3>' + esc(r.name) + '</h3>' +
       '<span class="price">Rp ' + esc(r.price) + '</span></div>' +
       '<p class="muted small pre">' + esc(r.description) + '</p>' +
-      (r.allergens ? '<span class="allergen">Alergen: ' + esc(r.allergens) + '</span>' : '') +
+      (r.allergens ? '<span class="allergen">Allergen: ' + esc(r.allergens) + '</span>' : '') +
       editBtn(sheetKey, r) +
     '</div>' +
   '</article>';
@@ -665,7 +667,7 @@ function greetingName() {
 function guestTime(r) {
   const m = String(r.date || "").trim().match(/^(\d{1,2})\s+([A-Za-z]{3})[a-z]*(?:\s+(\d{4}))?$/);
   if (!m) return 0;
-  const mi = MONTHS_EN.findIndex(x => x.toLowerCase() === m[2].toLowerCase());
+  const mi = monthIndex(m[2]);
   if (mi === -1) return 0;
   const now = new Date();
   let t = new Date(m[3] ? Number(m[3]) : now.getFullYear(), mi, Number(m[1])).getTime();
@@ -673,9 +675,19 @@ function guestTime(r) {
   return t;
 }
 
+/**
+ * Urutan tamu: tanggal (terbaru dulu, atau terlama dulu), lalu nama A-Z kalau tanggalnya sama.
+ * Tanggal yang tidak terbaca (0) ikut urutan terlama.
+ */
+function compareGuests(a, b, newest) {
+  const byDate = newest ? guestTime(b) - guestTime(a) : guestTime(a) - guestTime(b);
+  if (byDate) return byDate;
+  return String(a.guest).localeCompare(String(b.guest), "id", { sensitivity: "base" });
+}
+
 /** Terbaru di atas. Tanggal yang tidak terbaca ditaruh paling bawah. */
 function newestFirst(rows) {
-  return rows.slice().sort((a, b) => guestTime(b) - guestTime(a));
+  return rows.slice().sort((a, b) => compareGuests(a, b, true));
 }
 
 function guestCard(r) {
@@ -755,7 +767,7 @@ function viewGuestsLanding() {
 
 /** Pilihan kategori: "Semua" plus kategori dari data. Pilihan dikirim sebagai nomor, bukan teks. */
 function guestCategories() {
-  return distinctValues("guests", "category");
+  return GUEST_CATEGORIES.slice();
 }
 
 function guestChips() {
@@ -790,7 +802,7 @@ function guestListHtml() {
 }
 
 function sortGuests(rows, mode) {
-  if (mode === "oldest") return newestFirst(rows).reverse();
+  if (mode === "oldest") return rows.slice().sort((a, b) => compareGuests(a, b, false));
   if (mode === "name-asc") return rows.slice().sort((a, b) => String(a.guest).localeCompare(String(b.guest), "id", { sensitivity: "base" }));
   if (mode === "name-desc") return rows.slice().sort((a, b) => String(b.guest).localeCompare(String(a.guest), "id", { sensitivity: "base" }));
   return newestFirst(rows);
@@ -1166,6 +1178,15 @@ async function deleteForm() {
 
 const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+/** Nama bulan yang boleh ada di sheet: Inggris atau Indonesia. Hanya untuk membaca, penulisan tetap Inggris. */
+const MONTH_ALIASES = { jan: 0, feb: 1, mar: 2, apr: 3, mei: 4, may: 4, jun: 5, jul: 6, agu: 7, aug: 7, sep: 8, okt: 9, oct: 9, nov: 10, des: 11, dec: 11 };
+
+/** Indeks bulan (0-11) dari nama di sheet. -1 kalau tidak dikenali. */
+function monthIndex(name) {
+  const k = String(name || "").toLowerCase();
+  return Object.prototype.hasOwnProperty.call(MONTH_ALIASES, k) ? MONTH_ALIASES[k] : -1;
+}
+
 function pad2(n) {
   return String(n).padStart(2, "0");
 }
@@ -1184,7 +1205,7 @@ function formatSheetDate(d) {
 function isoFromSheetDate(v) {
   const m = String(v || "").trim().match(/^(\d{1,2}) ([A-Za-z]{3})[a-z]* (\d{4})$/);
   if (!m) return "";
-  const mi = MONTHS_EN.findIndex(x => x.toLowerCase() === m[2].toLowerCase());
+  const mi = monthIndex(m[2]);
   if (mi === -1) return "";
   return m[3] + "-" + pad2(mi + 1) + "-" + pad2(Number(m[1]));
 }
