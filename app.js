@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.22.0";
+const APP_VERSION = "2.24.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -32,6 +32,10 @@ const ALLERGEN_OPTIONS = ["Gluten", "Milk", "Egg", "Nut", "Seafood", "Soy"];
 const DIFFICULTY_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
 const SECTION_OPTIONS = ["Company Story", "Vision", "Mission", "Identity & Essences", "Core Values"];
 
+/* Start hour of each shift. A shift is "now" from its start until the next shift starts. */
+const SHIFT_START = { "M6": "06:00", "M8": "08:00", "M11": "11:00", "MD12": "12:00", "E2": "14:30" };
+const SHIFT_NAMES = Object.keys(SHIFT_START);
+
 const MENU_FIELDS = [
   { key: "category",    label: "Category", src: true },
   { key: "name",        label: "Menu name" },
@@ -45,7 +49,7 @@ const EDIT_FIELDS = {
   upsell: [
     { key: "date",     label: "Date", input: "date" },
     { key: "sesi",     label: "Session", options: SESI_ORDER },
-    { key: "shift",    label: "Shift (e.g. M6 & M8)", src: true },
+    { key: "shift",    label: "Shift", options: SHIFT_NAMES, src: true },
     { key: "item",     label: "Item" },
     { key: "target",   label: "Target", input: "number" },
     { key: "satuan",   label: "Unit (e.g. portion/server)", src: true }
@@ -438,20 +442,42 @@ function homeCol(title, sheetKey, body, extra) {
   return '<section class="home-col">' + sectionHead(title, sheetKey, extra) + body + '</section>';
 }
 
-/** Upsell for today: items grouped by session. Only rows dated today are shown. */
+/** Shift yang sedang berjalan sekarang, atau null kalau tidak ada yang cocok. */
+function currentShift() {
+  const now = new Date();
+  const minutes = now.getHours() * 60 + now.getMinutes();
+  let best = null;
+  let bestStart = -1;
+  SHIFT_NAMES.forEach(name => {
+    const [h, m] = SHIFT_START[name].split(":").map(Number);
+    const start = h * 60 + m;
+    if (start <= minutes && start > bestStart) { best = name; bestStart = start; }
+  });
+  return best;
+}
+
+/**
+ * Upsell for today, grouped by shift. The shift running now is shown first and marked "Now".
+ */
 function upsellPanel() {
   const rows = appData.upsell.filter(r => isToday(r.date));
   if (!rows.length) return emptyState("No upsell for today.");
 
-  const extra = rows.map(r => r.sesi)
-    .filter((x, i, arr) => x && SESI_ORDER.indexOf(x) === -1 && arr.indexOf(x) === i);
+  const now = currentShift();
+  const rank = name => (SHIFT_NAMES.indexOf(name) === -1 ? 99 : SHIFT_NAMES.indexOf(name));  // urut sesuai SHIFT_START
+  const names = rows.map(r => r.shift || "")
+    .filter((x, i, arr) => arr.indexOf(x) === i)
+    .sort((a, b) => ((b === now) - (a === now)) || (rank(a) - rank(b)));
 
-  return SESI_ORDER.concat(extra).map(sesi => {
-    const group = rows.filter(r => r.sesi === sesi);
-    if (!group.length) return "";
-    return '<div class="card upsell-session">' +
-      '<div class="row-between"><strong>' + esc(sesi) + '</strong>' +
-      (group[0].shift ? '<span class="badge">' + esc(group[0].shift) + '</span>' : '') + '</div>' +
+  return names.map(name => {
+    const group = rows.filter(r => (r.shift || "") === name);
+    const isNow = name === now;
+    return '<div class="card upsell-session' + (isNow ? ' now' : '') + '">' +
+      '<div class="row-between"><strong>' + esc(name || "No shift") + '</strong>' +
+        '<span>' +
+          (group[0].sesi ? '<span class="badge">' + esc(group[0].sesi) + '</span> ' : '') +
+          (isNow ? '<span class="badge now-badge">Now</span>' : '') +
+        '</span></div>' +
       group.map(r =>
         '<div class="upsell-line"><span>' + esc(r.item) + '</span>' +
         '<span class="price">' + esc(r.target) + ' ' + esc(r.satuan) + '</span>' +

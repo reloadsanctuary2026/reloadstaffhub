@@ -3,6 +3,15 @@
 Each frontend update bumps `APP_VERSION` in `app.js` and the `?v=` values in `index.html`, and is recorded here.
 Backend (`Code.gs`) versions are listed separately at the bottom.
 
+## 2.24.0
+- Shifts are now separate: M6 (06:00), M8 (08:00), M11 (11:00), MD12 (12:00), E2 (14:30). Set in `SHIFT_START`.
+- The "Now" marker follows the exact start time.
+- Existing rows with the old shift "M6 & M8" must be changed to M6 or M8 (Shift is now a dropdown).
+
+## 2.23.0
+- Upsell is grouped by shift (M6 & M8, M11 & MD12, E2), not by session. Each shift shows its own items.
+- The shift running now is shown first and marked "Now". Shift start hours are set in `SHIFT_START`.
+
 ## 2.22.0
 - Faster loading: sheet data is cached for 60 seconds on the server and cleared on every change.
 - Requests time out after 20 seconds, with a clear message and a "Try again" button.

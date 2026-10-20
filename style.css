@@ -569,3 +569,7 @@ ul.plain li:last-child { border-bottom: 0; }
 }
 
 .center { text-align: center; }
+
+/* Shift yang sedang berjalan */
+.upsell-session.now { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.now-badge { background: var(--accent); color: #fff; }
