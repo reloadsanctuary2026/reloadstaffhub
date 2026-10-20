@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.7.0";
+const APP_VERSION = "2.7.1";
 
 const TABS = [
   { key: "home",     label: "Home" },

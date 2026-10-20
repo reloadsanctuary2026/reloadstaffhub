@@ -6,7 +6,7 @@
   --elevated: #302F2F;      /* Dark Charcoal */
   --border: rgba(222, 202, 184, 0.12);
   --text: #DECAB8;          /* Bone */
-  --muted: #756D64;         /* Shade of Sandstone */
+  --muted: rgba(222, 202, 184, 0.8); /* Bone 80%, supaya tetap terbaca di latar gelap */
   --accent: #AA7655;        /* French Beige */
   --accent-soft: rgba(170, 118, 85, 0.16);
   --danger: #800020;        /* Burgundy */
@@ -37,7 +37,7 @@ body {
 .container { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
 .muted { color: var(--muted); }
 .small { font-size: 13px; }
-.pre { white-space: pre-line; margin: 6px 0 0; }
+.pre { white-space: pre-line; margin: 6px 0 0; color: var(--text); }
 h1, h2, h3 { margin: 0; letter-spacing: -0.01em; }
 
 /* ---------- LOGIN ---------- */
