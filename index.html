@@ -37,6 +37,19 @@
   <nav id="tabbar" class="tabbar"></nav>
 </div>
 
+<div id="editModal" class="modal hidden">
+  <div class="modal-box">
+    <div class="row-between">
+      <strong id="editTitle">Edit</strong>
+      <button class="ghost" id="editClose" type="button">Tutup</button>
+    </div>
+    <form id="editForm" class="edit-form"></form>
+    <div id="editError" class="error"></div>
+    <button id="editSave" class="btn" type="button">Simpan</button>
+    <button id="editDelete" class="btn danger hidden" type="button">Hapus baris ini</button>
+  </div>
+</div>
+
 <div id="toast" class="toast hidden"></div>
 
 <script src="config.js"></script>
