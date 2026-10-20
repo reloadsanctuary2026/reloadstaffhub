@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.26.2";
+const APP_VERSION = "2.26.3";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -26,13 +26,14 @@ const TABS = [
  *   options: daftar pilihan tetap
  *   src: true = pilihan diambil dari nilai yang sudah ada di sheet, plus "+ New…"
  */
-const STATUS_OPTIONS = ["ACTIVE", "INACTIVE"];
+/* Sama dengan dropdown Status di sheet. */
+const STATUS_OPTIONS = ["ACTIVE", "NOT ACTIVE"];
 const SESI_ORDER = ["Morning", "Afternoon", "Evening"];
 const ALLERGEN_OPTIONS = ["Gluten", "Milk", "Egg", "Nut", "Seafood", "Soy"];
 const DIFFICULTY_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
 const SECTION_OPTIONS = ["Company Story", "Vision", "Mission", "Identity & Essences", "Core Values"];
 /* Kategori tamu. Sama dengan GUEST_CATEGORIES di backend (Code.gs). Kalau berubah, ubah keduanya. */
-const GUEST_CATEGORIES = ["Birthday", "Preference", "VIP", "Complaint"];
+const GUEST_CATEGORIES = ["Birthday", "Preference", "VIP", "Farewell", "Celebration", "Achievement", "Complaint"];
 
 /* Start hour of each shift. A shift is "now" from its start until the next shift starts. */
 const SHIFT_START = { "M6": "06:00", "M8": "08:00", "M11": "11:00", "MD12": "12:00", "E2": "14:30" };

@@ -3,6 +3,11 @@
 Each frontend update bumps `APP_VERSION` in `app.js` and the `?v=` values in `index.html`, and is recorded here.
 Backend (`Code.gs`) versions are listed separately at the bottom.
 
+## 2.26.3
+- Status sekarang ACTIVE atau NOT ACTIVE, sama dengan dropdown di sheet (sebelumnya INACTIVE).
+- Kategori tamu sama dengan dropdown di sheet, ditambah Complaint.
+- Backend 2.22.0: nilai yang tidak ada di dropdown sheet ditolak sebelum menulis apa pun. `auditData()` juga membandingkan dropdown sheet dengan kode.
+
 ## 2.26.2
 - Kategori tamu sekarang pilihan tetap: Birthday, Preference, VIP, Complaint. Daftar ini ada di config dan harus sama dengan backend.
 - Label "Alergen" diperbaiki menjadi "Allergen" di kartu menu.
@@ -106,6 +111,7 @@ Backend (`Code.gs`) versions are listed separately at the bottom.
 - Frontend moved to GitHub Pages. Backend became a JSON API in Apps Script.
 
 ## Backend (Code.gs)
+- 2.22.0: status dan kategori mengikuti dropdown sheet. Penulisan dicek dulu terhadap dropdown; kalau ada yang tidak diizinkan, tidak ada yang ditulis.
 - 2.21.0: `previewComplaintMoves()` dan `applyComplaintMoves()` memindahkan komplain dari Preference ke Complaint. Dicocokkan lewat tanggal + nama, dan hanya baris yang masih Preference.
 - 2.20.0: satu pintu untuk merapikan isi baris (tanggal, status, kategori tamu, spasi nama) saat dibaca, ditulis, dan dicek konflik. Tambah `auditData()` (cek saja), `previewRepairs()` (lihat perubahan), dan `applyRepairs()` (tulis perbaikan, dicatat di changelog). Kategori tamu dipaksa ke daftar tetap.
 - 2.19.0: tanggal di sheet (termasuk nama bulan Indonesia seperti Okt) dibaca dan dikirim ke app dalam format baku, mis. `20 Oct 2026`. Sheet tidak diubah. Cek konflik saat edit ikut memakai format ini.
