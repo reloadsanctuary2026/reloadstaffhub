@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.25.0";
+const APP_VERSION = "2.26.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -764,7 +764,7 @@ function guestChips() {
   const chip = (idx, label, n) =>
     '<button type="button" class="chip-btn' + (guestFilter.cat === idx ? ' on' : '') +
       '" onclick="guestCategory(' + idx + ')">' + esc(label) + '<span>' + n + '</span></button>';
-  return chip(-1, "Semua", visible.length) +
+  return chip(-1, "All", visible.length) +
     cats.map((c, i) => chip(i, c, visible.filter(r => r.category === c).length)).join("");
 }
 
@@ -783,7 +783,7 @@ function guestListHtml() {
     ? '<div class="guest-grid">' + shown.map(guestTile).join("") + '</div>'
     : '<div class="guest-list">' + shown.map(guestLine).join("") + '</div>';
   const more = rows.length > shown.length
-    ? '<button class="btn outline" type="button" onclick="guestMore()">Tampilkan lebih banyak</button>'
+    ? '<button class="btn outline" type="button" onclick="guestMore()">Show more</button>'
     : '';
   return body +
     '<div class="gl-more"><p class="muted small">Showing ' + shown.length + ' of ' + rows.length + ' guests</p>' + more + '</div>';
@@ -1038,7 +1038,7 @@ function selectHtml(sheetKey, f, v) {
 
   return '<select class="input" data-key="' + f.key + '">' + blank +
     opts.map(o => '<option value="' + esc(o) + '"' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>').join("") +
-    (f.src ? '<option value="__new__"' + (isNew ? ' selected' : '') + '>+ Baru…</option>' : '') +
+    (f.src ? '<option value="__new__"' + (isNew ? ' selected' : '') + '>+ New…</option>' : '') +
     '</select>' +
     (f.src ? '<input class="input new-input' + (isNew ? '' : ' hidden') + '" type="text" data-new-for="' + f.key + '" placeholder="Type a new value">' : '');
 }

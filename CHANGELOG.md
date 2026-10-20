@@ -3,6 +3,11 @@
 Each frontend update bumps `APP_VERSION` in `app.js` and the `?v=` values in `index.html`, and is recorded here.
 Backend (`Code.gs`) versions are listed separately at the bottom.
 
+## 2.26.0
+- Translated the last Indonesian text: chip "All", "Show more", "+ New…", and the changelog row prefix "Row".
+- Backend 2.18.0: changelog rows say "Row N" instead of "Baris N".
+- The header alias "Sesi" stays in the backend on purpose, so the existing sheet header still works.
+
 ## 2.25.0
 - A thin loading bar at the top appears while any request to the server is running.
 - Buttons show a spinner while working: Log in, Save ("Saving..."), Delete ("Deleting...").
