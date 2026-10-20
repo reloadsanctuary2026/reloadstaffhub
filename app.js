@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.26.5";
+const APP_VERSION = "2.26.6";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -756,11 +756,11 @@ function viewGuestsLanding() {
           .map(o => '<option value="' + o[0] + '"' + (guestFilter.sort === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join("") +
       '</select>' +
       (canEdit()
-        ? '<div class="seg gl-status" role="group" aria-label="Status filter">' +
-            [["all", "All"], ["active", "Active"], ["inactive", "Inactive"]].map(o =>
-              '<button type="button" class="' + (guestFilter.status === o[0] ? "on" : "") + '" onclick="guestStatus(\'' + o[0] + '\')">' + o[1] + '</button>'
+        ? '<select class="input gl-status" aria-label="Filter by status" onchange="guestStatus(this.value)">' +
+            [["all", "All status"], ["active", "Active"], ["inactive", "Inactive"]].map(o =>
+              '<option value="' + o[0] + '"' + (guestFilter.status === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'
             ).join("") +
-          '</div>'
+          '</select>'
         : '') +
       '<div class="seg">' +
         '<button type="button" class="' + (guestFilter.view === "grid" ? "on" : "") + '" aria-label="Grid view" onclick="guestView(\'grid\')">▦</button>' +

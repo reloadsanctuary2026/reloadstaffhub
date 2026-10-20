@@ -620,4 +620,13 @@ ul.plain li:last-child { border-bottom: 0; }
 .note.guest.is-inactive:hover, .guest-tile.is-inactive:hover, .guest-line.is-inactive:hover { background: #242424; }
 .guest-tile.is-inactive .guest-tile-img, .guest-tile.is-inactive .gph,
 .guest-line.is-inactive .guest-line-img, .guest-line.is-inactive .gph { filter: grayscale(0.6) brightness(0.7); }
-.gl-status { flex: 0 0 auto; }
+
+/* Toolbar Our Guests: satu baris yang rapat */
+.gl-toolbar { gap: 8px; margin: 10px 0 12px; align-items: center; }
+.gl-search { flex: 1 1 200px; height: 44px; margin: 0; }
+.gl-sort, .gl-status { flex: 0 0 auto; width: auto; min-width: 128px; height: 44px; margin: 0; padding: 0 12px; font-size: 13px; }
+.gl-toolbar .seg button { min-height: 44px; }
+@media (max-width: 560px) {
+  .gl-search { flex: 1 1 100%; }
+  .gl-sort, .gl-status { flex: 1 1 0; min-width: 0; }
+}
