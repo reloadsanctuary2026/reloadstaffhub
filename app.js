@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.26.3";
+const APP_VERSION = "2.26.4";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -130,13 +130,14 @@ let sessionToken = readStore_("rsh_token");
 let currentName = "";
 let currentNickname = "";
 const GUEST_HOME_LIMIT = 5;
+const GUEST_PREVIEW_CHARS = 50;   // potongan catatan di kartu Home, sisanya lewat Read more
 let currentCanEdit = false;   // dari backend (canEditTier_), satu sumber kebenaran
 let appData = null;
 let activeTab = "home";
 let searchText = "";
 let guestsLanding = false;
 const GUESTS_PAGE_SIZE = 12;
-let guestFilter = { q: "", cat: -1, sort: "newest", view: "grid", shown: GUESTS_PAGE_SIZE };
+let guestFilter = { q: "", cat: -1, sort: "newest", view: "grid", status: "all", shown: GUESTS_PAGE_SIZE };
 let formState = null;   // { mode: "add" | "edit", sheetKey, row, original }
 
 /* ---------- API ---------- */
@@ -440,7 +441,7 @@ function renderActiveView() {
 function viewHome() {
   const quotes = appData.inspiration.filter(r => r.greeting === dayPart().key);
   const quote = quotes.length ? quotes[new Date().getDate() % quotes.length] : null;
-  const guests = newestFirst(appData.guests.filter(showItem)).slice(0, GUEST_HOME_LIMIT);
+  const guests = newestFirst(appData.guests.filter(isActive)).slice(0, GUEST_HOME_LIMIT);
   const news = appData.bulletin.filter(showItem);
 
   return '<section class="hero">' +
@@ -456,7 +457,7 @@ function viewHome() {
 
     '<div class="home-grid">' +
       homeCol("Our Guests", "guests",
-        guests.length ? listWithInactive(guests, guestCard) : emptyState("No active guest notes."),
+        guests.length ? guests.map(guestCard).join("") : emptyState("No active guest notes."),
         '<button class="ghost small-link" type="button" onclick="openGuestsLanding()">View all</button>') +
       homeCol("Upsell Today", "upsell", upsellPanel()) +
       homeCol("Staff Bulletin", "bulletin",
@@ -691,29 +692,23 @@ function newestFirst(rows) {
   return rows.slice().sort((a, b) => compareGuests(a, b, true));
 }
 
+/** Kartu tamu di Home: foto dan nama, tanggal dan judul, lalu potongan catatan. Selengkapnya lewat Read more. */
 function guestCard(r) {
-  const long = String(r.description || "").length > 140;
+  const text = String(r.description || "");
+  const long = text.length > GUEST_PREVIEW_CHARS;
+  const snippet = long ? text.slice(0, GUEST_PREVIEW_CHARS).trimEnd() + "…" : text;
   return '<div class="note guest' + inactiveClass(r) + '">' +
-    (r.image
-      ? '<button class="guest-photo" type="button" onclick="openGuest(' + r._row + ')" aria-label="View details of ' + esc(r.guest) + '">' +
-          '<img src="' + imgUrl(r.image) + '" alt="" loading="lazy"></button>'
-      : '') +
-    '<div class="note-body">' +
-      '<div class="row-between"><strong>' + esc(r.guest) + '</strong>' +
-      '<span class="badge">' + esc(r.category) + '</span>' + statusBadge(r) + '</div>' +
-      '<div class="small muted">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</div>' +
-      '<p class="clamp" id="guest-text-' + r._row + '">' + esc(r.description) + '</p>' +
-      (long ? '<button class="more" type="button" onclick="toggleMore(' + r._row + ')">Read more</button>' : '') +
-      editBtn("guests", r) +
+    '<div class="guest-card-head">' +
+      (r.image
+        ? '<img class="guest-card-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">'
+        : '<div class="guest-card-photo gph">' + esc(initial(r.guest)) + '</div>') +
+      '<div class="guest-card-name"><strong>' + esc(r.guest) + '</strong>' +
+        '<span class="small muted">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</span></div>' +
     '</div>' +
+    (snippet ? '<p class="guest-card-text">' + esc(snippet) + '</p>' : '') +
+    (long ? '<button class="more" type="button" onclick="openGuest(' + r._row + ')">Read more</button>' : '') +
+    editBtn("guests", r) +
   '</div>';
-}
-
-function toggleMore(row) {
-  const text = document.getElementById("guest-text-" + row);
-  const btn = text.nextElementSibling;
-  const open = text.classList.toggle("open");
-  btn.innerText = open ? "Show less" : "Read more";
 }
 
 /** Detail tamu: foto besar dan catatan lengkap. */
@@ -739,7 +734,7 @@ function closeGuest() {
 
 function openGuestsLanding() {
   guestsLanding = true;
-  guestFilter = { q: "", cat: -1, sort: "newest", view: "grid", shown: GUESTS_PAGE_SIZE };
+  guestFilter = { q: "", cat: -1, sort: "newest", view: "grid", status: "all", shown: GUESTS_PAGE_SIZE };
   renderTab();
   window.scrollTo(0, 0);
 }
@@ -758,6 +753,13 @@ function viewGuestsLanding() {
         [["newest", "Newest"], ["oldest", "Oldest"], ["name-asc", "Name A-Z"], ["name-desc", "Name Z-A"]]
           .map(o => '<option value="' + o[0] + '"' + (guestFilter.sort === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join("") +
       '</select>' +
+      (canEdit()
+        ? '<div class="seg gl-status" role="group" aria-label="Status filter">' +
+            [["all", "All"], ["active", "Active"], ["inactive", "Inactive"]].map(o =>
+              '<button type="button" class="' + (guestFilter.status === o[0] ? "on" : "") + '" onclick="guestStatus(\'' + o[0] + '\')">' + o[1] + '</button>'
+            ).join("") +
+          '</div>'
+        : '') +
       '<div class="seg">' +
         '<button type="button" class="' + (guestFilter.view === "grid" ? "on" : "") + '" aria-label="Grid view" onclick="guestView(\'grid\')">▦</button>' +
         '<button type="button" class="' + (guestFilter.view === "list" ? "on" : "") + '" aria-label="List view" onclick="guestView(\'list\')">☰</button>' +
@@ -773,7 +775,7 @@ function guestCategories() {
 
 function guestChips() {
   const cats = guestCategories();
-  const visible = appData.guests.filter(showItem);
+  const visible = guestBaseRows();
   const chip = (idx, label, n) =>
     '<button type="button" class="chip-btn' + (guestFilter.cat === idx ? ' on' : '') +
       '" onclick="guestCategory(' + idx + ')">' + esc(label) + '<span>' + n + '</span></button>';
@@ -781,9 +783,17 @@ function guestChips() {
     cats.map((c, i) => chip(i, c, visible.filter(r => r.category === c).length)).join("");
 }
 
+/** Tamu yang boleh dilihat, lalu dipersempit status. Dipakai daftar dan hitungan chip kategori. */
+function guestBaseRows() {
+  const rows = appData.guests.filter(showItem);
+  if (guestFilter.status === "active") return rows.filter(isActive);
+  if (guestFilter.status === "inactive") return rows.filter(r => !isActive(r));
+  return rows;
+}
+
 function guestListHtml() {
   const cats = guestCategories();
-  let rows = appData.guests.filter(showItem);
+  let rows = guestBaseRows();
   if (guestFilter.cat >= 0) rows = rows.filter(r => r.category === cats[guestFilter.cat]);
   const q = guestFilter.q.trim().toLowerCase();
   if (q) rows = rows.filter(r => [r.guest, r.title, r.description, r.category].join(" ").toLowerCase().indexOf(q) !== -1);
@@ -848,6 +858,12 @@ function guestCategory(idx) {
 
 function guestSort(mode) {
   guestFilter.sort = mode;
+  guestFilter.shown = GUESTS_PAGE_SIZE;
+  renderTab();
+}
+
+function guestStatus(mode) {
+  guestFilter.status = mode;
   guestFilter.shown = GUESTS_PAGE_SIZE;
   renderTab();
 }

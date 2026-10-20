@@ -3,6 +3,12 @@
 Each frontend update bumps `APP_VERSION` in `app.js` and the `?v=` values in `index.html`, and is recorded here.
 Backend (`Code.gs`) versions are listed separately at the bottom.
 
+## 2.26.4
+- Home: Our Guests hanya menampilkan 5 tamu aktif, terbaru di atas. Sebelumnya yang nonaktif ikut terhitung, jadi kadang hanya 3 yang aktif.
+- Kartu tamu di Home dibuat lebih ringkas: foto dan nama, tanggal dan judul, lalu 50 karakter catatan dengan Read more.
+- Tamu nonaktif tampil abu gelap dan sedikit lebih terang saat hover.
+- Filter Status (All, Active, Inactive) ditambahkan untuk editor. Filter status dan kategori bisa dipakai bersamaan, dengan search dan sort.
+
 ## 2.26.3
 - Status sekarang ACTIVE atau NOT ACTIVE, sama dengan dropdown di sheet (sebelumnya INACTIVE).
 - Kategori tamu sama dengan dropdown di sheet, ditambah Complaint.
