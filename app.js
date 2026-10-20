@@ -13,10 +13,100 @@ const TABS = [
   { key: "about",    label: "About" }
 ];
 
+/* Field yang tampil di form, per sheet. Harus mencakup semua kolom sheet. */
+const MENU_FIELDS = [
+  { key: "category",    label: "Kategori" },
+  { key: "name",        label: "Nama" },
+  { key: "description", label: "Deskripsi", multi: true },
+  { key: "allergens",   label: "Alergen" },
+  { key: "price",       label: "Harga" },
+  { key: "image",       label: "ID gambar (Drive)" }
+];
+
+const STATUS_OPTIONS = ["ACTIVE", "INACTIVE"];
+
+const EDIT_FIELDS = {
+  importantInfo: [
+    { key: "date",        label: "Tanggal" },
+    { key: "title",       label: "Judul" },
+    { key: "description", label: "Deskripsi", multi: true },
+    { key: "status",      label: "Status", options: STATUS_OPTIONS }
+  ],
+  bulletin: [
+    { key: "date",        label: "Tanggal" },
+    { key: "type",        label: "Tipe" },
+    { key: "title",       label: "Judul" },
+    { key: "description", label: "Deskripsi", multi: true },
+    { key: "image",       label: "ID gambar (Drive)" },
+    { key: "status",      label: "Status", options: STATUS_OPTIONS }
+  ],
+  food: MENU_FIELDS,
+  beverage: MENU_FIELDS,
+  sop: [
+    { key: "category",    label: "Kategori" },
+    { key: "name",        label: "Nama SOP" },
+    { key: "description", label: "Deskripsi", multi: true },
+    { key: "file",        label: "ID file Drive" },
+    { key: "updated",     label: "Terakhir diupdate" }
+  ],
+  teams: [
+    { key: "department", label: "Departemen" },
+    { key: "position",   label: "Jabatan" },
+    { key: "name",       label: "Nama" },
+    { key: "image",      label: "ID foto (Drive)" },
+    { key: "phone",      label: "Nomor HP (628...)" }
+  ],
+  about: [
+    { key: "section", label: "Bagian" },
+    { key: "content", label: "Isi", multi: true }
+  ],
+  guests: [
+    { key: "date",        label: "Tanggal" },
+    { key: "category",    label: "Kategori" },
+    { key: "guest",       label: "Nama tamu" },
+    { key: "title",       label: "Judul" },
+    { key: "description", label: "Deskripsi", multi: true },
+    { key: "image",       label: "ID gambar (Drive)" },
+    { key: "status",      label: "Status", options: STATUS_OPTIONS }
+  ],
+  academy: [
+    { key: "category",    label: "Kategori" },
+    { key: "title",       label: "Judul" },
+    { key: "shortDesc",   label: "Deskripsi singkat" },
+    { key: "content",     label: "Isi materi", multi: true },
+    { key: "fullLink",    label: "Link materi" },
+    { key: "video",       label: "Link video" },
+    { key: "readingTime", label: "Waktu baca" },
+    { key: "knowledge",   label: "Knowledge of the Week", options: ["YES", "NO"] },
+    { key: "updated",     label: "Terakhir diupdate" },
+    { key: "difficulty",  label: "Tingkat kesulitan" }
+  ],
+  inspiration: [
+    { key: "greeting", label: "Waktu", options: ["Morning", "Afternoon", "Evening", "Night"] },
+    { key: "quote",    label: "Quote", multi: true },
+    { key: "author",   label: "Penulis" }
+  ]
+};
+
+const SHEET_LABELS = {
+  importantInfo: "Important Info",
+  bulletin: "Staff Bulletin",
+  food: "Food Bible",
+  beverage: "Beverage Bible",
+  sop: "SOP",
+  teams: "Our Teams",
+  about: "About Reload",
+  guests: "Guest Notes",
+  academy: "Reload Academy",
+  inspiration: "Quote Harian"
+};
+
 let sessionToken = readStore_("rsh_token");
+let currentTier = "";
 let appData = null;
 let activeTab = "home";
 let searchText = "";
+let formState = null;   // { mode: "add" | "edit", sheetKey, row, original }
 
 /* ---------- API ---------- */
 
@@ -56,6 +146,12 @@ window.addEventListener("load", async function () {
     if (e.key === "Enter") doLogin();
   });
   document.getElementById("logoutBtn").addEventListener("click", doLogout);
+  document.getElementById("editClose").addEventListener("click", closeForm);
+  document.getElementById("editSave").addEventListener("click", saveForm);
+  document.getElementById("editDelete").addEventListener("click", deleteForm);
+  document.getElementById("editModal").addEventListener("click", function (e) {
+    if (e.target.id === "editModal") closeForm();
+  });
 
   if (!sessionToken) return showLogin();
 
@@ -77,6 +173,7 @@ function showLogin() {
 }
 
 function enterApp(user) {
+  currentTier = user.tier || "";
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("appShell").classList.remove("hidden");
   document.getElementById("userBadge").innerText = user.name + " · " + user.tier;
@@ -124,8 +221,10 @@ function doLogout() {
 
 function endSession() {
   sessionToken = null;
+  currentTier = "";
   writeStore_("rsh_token", null);
   appData = null;
+  closeForm();
   showLogin();
 }
 
@@ -173,11 +272,11 @@ function renderTab() {
 
   let html = "";
   if (activeTab === "home")          html = viewHome();
-  else if (activeTab === "food")     html = viewSearchable("Food Bible");
-  else if (activeTab === "beverage") html = viewSearchable("Beverage Bible");
-  else if (activeTab === "sop")      html = viewSearchable("SOP");
+  else if (activeTab === "food")     html = viewSearchable("food");
+  else if (activeTab === "beverage") html = viewSearchable("beverage");
+  else if (activeTab === "sop")      html = viewSearchable("sop");
   else if (activeTab === "teams")    html = viewTeams();
-  else if (activeTab === "academy")  html = viewSearchable("Reload Academy");
+  else if (activeTab === "academy")  html = viewSearchable("academy");
   else if (activeTab === "guests")   html = viewGuests();
   else if (activeTab === "about")    html = viewAbout();
 
@@ -193,22 +292,25 @@ function viewHome() {
   const news = appData.bulletin.filter(r => r.status === "ACTIVE");
 
   return (quote
-      ? '<div class="card quote"><p>"' + esc(quote.quote) + '"</p><span class="caption">— ' + esc(quote.author) + '</span></div>'
-      : '') +
+      ? '<div class="card quote"><p>"' + esc(quote.quote) + '"</p><span class="caption">— ' + esc(quote.author) + '</span></div>' +
+        editBtn("inspiration", quote) + addBtn("inspiration", "+ Quote")
+      : addBtn("inspiration", "+ Quote")) +
 
-    '<h2 class="section-title">Important Info</h2>' +
+    sectionHead("Important Info", "importantInfo") +
     (info
       ? '<div class="card"><div class="caption">' + esc(info.date) + '</div>' +
         '<strong>' + esc(info.title) + '</strong>' +
-        '<p class="pre">' + esc(info.description) + '</p></div>'
+        '<p class="pre">' + esc(info.description) + '</p>' +
+        editBtn("importantInfo", info) + '</div>'
       : '<div class="card caption">Tidak ada info aktif.</div>') +
 
-    '<h2 class="section-title">Staff Bulletin</h2>' +
+    sectionHead("Staff Bulletin", "bulletin") +
     (news.length
       ? news.map(r =>
           '<div class="card"><div class="caption">' + esc(r.date) + ' · ' + esc(r.type) + '</div>' +
           '<strong>' + esc(r.title) + '</strong>' +
-          '<p class="pre">' + esc(r.description) + '</p></div>'
+          '<p class="pre">' + esc(r.description) + '</p>' +
+          editBtn("bulletin", r) + '</div>'
         ).join("")
       : '<div class="card caption">Belum ada bulletin aktif.</div>');
 }
@@ -223,8 +325,8 @@ function timeOfDay() {
 
 /* ---------- MENU / SOP / ACADEMY (ada pencarian) ---------- */
 
-function viewSearchable(title) {
-  return '<h2 class="section-title">' + esc(title) + '</h2>' +
+function viewSearchable(sheetKey) {
+  return sectionHead(SHEET_LABELS[sheetKey], sheetKey) +
     '<input class="input" type="search" placeholder="Cari..." value="' + esc(searchText) +
     '" oninput="onSearch(this.value)">' +
     '<div id="listArea">' + listHtml() + '</div>';
@@ -236,8 +338,8 @@ function onSearch(value) {
 }
 
 function listHtml() {
-  if (activeTab === "food")     return menuList(appData.food);
-  if (activeTab === "beverage") return menuList(appData.beverage);
+  if (activeTab === "food")     return menuList(appData.food, "food");
+  if (activeTab === "beverage") return menuList(appData.beverage, "beverage");
   if (activeTab === "sop")      return sopList();
   if (activeTab === "academy")  return academyList();
   return "";
@@ -247,7 +349,7 @@ function matches(fields) {
   return fields.join(" ").toLowerCase().indexOf(searchText) !== -1;
 }
 
-function menuList(rows) {
+function menuList(rows, sheetKey) {
   const items = rows.filter(r => r.name && matches([r.category, r.name, r.description]));
   if (!items.length) return emptyState();
 
@@ -261,6 +363,7 @@ function menuList(rows) {
           '<span class="price">Rp ' + esc(r.price) + '</span></div>' +
           '<p class="caption pre">' + esc(r.description) + '</p>' +
           (r.allergens ? '<p class="allergen">Alergen: ' + esc(r.allergens) + '</p>' : '') +
+          editBtn(sheetKey, r) +
         '</div>' +
       '</div>'
     ).join("")
@@ -274,11 +377,14 @@ function sopList() {
   return groupBy(items, "category").map(g =>
     '<h3 class="group">' + esc(g.key) + '</h3>' +
     g.items.map(r =>
-      '<a class="card link-card" target="_blank" rel="noopener" href="https://drive.google.com/file/d/' +
-        encodeURIComponent(r.file) + '/view">' +
-        '<strong>' + esc(r.name) + '</strong>' +
-        '<div class="caption">Update: ' + esc(r.updated) + '</div>' +
-      '</a>'
+      '<div class="card">' +
+        '<a class="link-card" target="_blank" rel="noopener" href="https://drive.google.com/file/d/' +
+          encodeURIComponent(r.file) + '/view">' +
+          '<strong>' + esc(r.name) + '</strong>' +
+          '<div class="caption">Update: ' + esc(r.updated) + '</div>' +
+        '</a>' +
+        editBtn("sop", r) +
+      '</div>'
     ).join("")
   ).join("");
 }
@@ -300,6 +406,7 @@ function academyList() {
           (r.video ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(r.video) + '">Tonton video</a>' : '') +
           (r.fullLink ? '<a class="btn small outline" target="_blank" rel="noopener" href="' + esc(r.fullLink) + '">Baca materi</a>' : '') +
         '</div>' +
+        editBtn("academy", r) +
       '</div>'
     ).join("")
   ).join("");
@@ -309,53 +416,206 @@ function academyList() {
 
 function viewTeams() {
   const rows = appData.teams.filter(r => r.name);
-  if (!rows.length) return emptyState();
-
-  return '<h2 class="section-title">Our Teams</h2>' +
-    groupBy(rows, "department").map(g =>
-      '<h3 class="group">' + esc(g.key) + '</h3>' +
-      g.items.map(r =>
-        '<div class="card team">' +
-          (r.image
-            ? '<img class="avatar" src="' + imgUrl(r.image) + '" alt="">'
-            : '<div class="avatar"></div>') +
-          '<div class="team-body">' +
-            '<strong>' + esc(r.name) + '</strong>' +
-            '<div class="caption">' + esc(r.position) + '</div>' +
-            (r.phone
-              ? '<a class="caption" target="_blank" rel="noopener" href="https://wa.me/' +
-                esc(r.phone.replace(/\D/g, "")) + '">WhatsApp</a>'
-              : '') +
-          '</div>' +
-        '</div>'
-      ).join("")
-    ).join("");
+  return sectionHead("Our Teams", "teams") +
+    (rows.length
+      ? groupBy(rows, "department").map(g =>
+          '<h3 class="group">' + esc(g.key) + '</h3>' +
+          g.items.map(r =>
+            '<div class="card team">' +
+              (r.image
+                ? '<img class="avatar" src="' + imgUrl(r.image) + '" alt="">'
+                : '<div class="avatar"></div>') +
+              '<div class="team-body">' +
+                '<strong>' + esc(r.name) + '</strong>' +
+                '<div class="caption">' + esc(r.position) + '</div>' +
+                (r.phone
+                  ? '<a class="caption" target="_blank" rel="noopener" href="https://wa.me/' +
+                    esc(r.phone.replace(/\D/g, "")) + '">WhatsApp</a>'
+                  : '') +
+                editBtn("teams", r) +
+              '</div>' +
+            '</div>'
+          ).join("")
+        ).join("")
+      : emptyState());
 }
 
 function viewGuests() {
   const rows = appData.guests.filter(r => r.status === "ACTIVE");
-  if (!rows.length) return '<h2 class="section-title">Guest Notes</h2>' + emptyState();
-
-  return '<h2 class="section-title">Guest Notes</h2>' +
-    rows.map(r =>
-      '<div class="card item">' +
-        (r.image ? '<img class="thumb" src="' + imgUrl(r.image) + '" alt="">' : '') +
-        '<div class="item-body">' +
-          '<div class="row-between"><strong>' + esc(r.guest) + '</strong>' +
-          '<span class="badge">' + esc(r.category) + '</span></div>' +
-          '<div class="caption">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</div>' +
-          '<p class="pre">' + esc(r.description) + '</p>' +
-        '</div>' +
-      '</div>'
-    ).join("");
+  return sectionHead("Guest Notes", "guests") +
+    (rows.length
+      ? rows.map(r =>
+          '<div class="card item">' +
+            (r.image ? '<img class="thumb" src="' + imgUrl(r.image) + '" alt="">' : '') +
+            '<div class="item-body">' +
+              '<div class="row-between"><strong>' + esc(r.guest) + '</strong>' +
+              '<span class="badge">' + esc(r.category) + '</span></div>' +
+              '<div class="caption">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</div>' +
+              '<p class="pre">' + esc(r.description) + '</p>' +
+              editBtn("guests", r) +
+            '</div>' +
+          '</div>'
+        ).join("")
+      : emptyState());
 }
 
 function viewAbout() {
-  return '<h2 class="section-title">About Reload</h2>' +
+  return sectionHead("About Reload", "about") +
     appData.about.filter(r => r.section).map(r =>
       '<div class="card"><strong>' + esc(r.section) + '</strong>' +
-      '<p class="pre">' + esc(r.content) + '</p></div>'
+      '<p class="pre">' + esc(r.content) + '</p>' +
+      editBtn("about", r) + '</div>'
     ).join("");
+}
+
+/* ---------- TOMBOL EDIT / TAMBAH ---------- */
+
+function canEdit() {
+  return !!currentTier && currentTier !== "Staff";
+}
+
+function sectionHead(title, sheetKey) {
+  return '<div class="section-head"><h2 class="section-title">' + esc(title) + '</h2>' +
+    addBtn(sheetKey, "+ Tambah") + '</div>';
+}
+
+function addBtn(sheetKey, label) {
+  if (!canEdit()) return "";
+  return '<button class="add-btn" type="button" onclick="openAdd(\'' + sheetKey + '\')">' + esc(label) + '</button>';
+}
+
+function editBtn(sheetKey, rec) {
+  if (!canEdit() || !rec || !rec._row) return "";
+  return '<button class="edit-btn" type="button" onclick="openEdit(\'' + sheetKey + '\',' + rec._row + ')">Edit</button>';
+}
+
+/* ---------- FORM (tambah, edit, hapus) ---------- */
+
+function openAdd(sheetKey) {
+  const blank = {};
+  EDIT_FIELDS[sheetKey].forEach(f => { blank[f.key] = f.options ? f.options[0] : ""; });
+  formState = { mode: "add", sheetKey: sheetKey, row: null, original: blank };
+  showForm("Tambah " + SHEET_LABELS[sheetKey], blank, false);
+}
+
+function openEdit(sheetKey, row) {
+  const rec = (appData[sheetKey] || []).find(r => r._row === row);
+  if (!rec) return toast("Data sudah tidak ada. Refresh dulu.");
+
+  formState = { mode: "edit", sheetKey: sheetKey, row: row, original: rec };
+  showForm("Edit " + SHEET_LABELS[sheetKey], rec, true);
+}
+
+function showForm(title, values, canDelete) {
+  document.getElementById("editForm").innerHTML =
+    EDIT_FIELDS[formState.sheetKey].map(f => fieldHtml(f, values[f.key])).join("");
+  document.getElementById("editTitle").innerText = title;
+  document.getElementById("editError").innerText = "";
+  setFormBusy(false);
+  document.getElementById("editDelete").classList.toggle("hidden", !canDelete);
+  document.getElementById("editModal").classList.remove("hidden");
+}
+
+function closeForm() {
+  formState = null;
+  const modal = document.getElementById("editModal");
+  if (modal) modal.classList.add("hidden");
+}
+
+function setFormBusy(busy) {
+  document.getElementById("editSave").disabled = busy;
+  document.getElementById("editDelete").disabled = busy;
+  document.getElementById("editSave").innerText = busy ? "Menyimpan..." : "Simpan";
+}
+
+function fieldHtml(f, value) {
+  const v = value == null ? "" : value;
+  let input;
+  if (f.options) {
+    // Kalau nilai di sheet tidak ada di pilihan, tetap tampilkan supaya tidak berubah diam-diam.
+    const opts = f.options.indexOf(v) === -1 ? [v].concat(f.options) : f.options;
+    input = '<select class="input" data-key="' + f.key + '">' +
+      opts.map(o => '<option value="' + esc(o) + '"' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>').join("") +
+      '</select>';
+  } else if (f.multi) {
+    input = '<textarea class="input" rows="4" data-key="' + f.key + '">' + esc(v) + '</textarea>';
+  } else {
+    input = '<input class="input" type="text" data-key="' + f.key + '" value="' + esc(v) + '">';
+  }
+  return '<label class="field"><span class="caption">' + esc(f.label) + '</span>' + input + '</label>';
+}
+
+/** Isi form dibaca ulang, dicampur dengan isi asli supaya kolom yang tidak tampil tidak ikut kosong. */
+function readForm() {
+  const values = Object.assign({}, withoutRow(formState.original));
+  document.querySelectorAll("#editForm [data-key]").forEach(function (el) {
+    values[el.dataset.key] = el.value;
+  });
+  return values;
+}
+
+async function saveForm() {
+  if (!formState) return;
+
+  const err = document.getElementById("editError");
+  const sheetKey = formState.sheetKey;
+  const mode = formState.mode;
+  const row = formState.row;
+  const oldValues = withoutRow(formState.original);
+  const newValues = readForm();
+
+  setFormBusy(true);
+  err.innerText = "";
+
+  try {
+    if (mode === "add") {
+      await api("addRow", [sessionToken, sheetKey, newValues]);
+      toast("Ditambahkan.");
+    } else {
+      const res = await api("updateRow", [sessionToken, sheetKey, row, oldValues, newValues]);
+      toast(res.changed ? "Tersimpan." : "Tidak ada perubahan.");
+    }
+    closeForm();
+    loadData();
+  } catch (e) {
+    formError(e);
+  }
+}
+
+async function deleteForm() {
+  if (!formState || formState.mode !== "edit") return;
+  if (!confirm("Hapus baris ini? Isinya dicatat di changelog, tapi tidak bisa dibatalkan dari app.")) return;
+
+  const sheetKey = formState.sheetKey;
+  const row = formState.row;
+  const oldValues = withoutRow(formState.original);
+
+  setFormBusy(true);
+  document.getElementById("editError").innerText = "";
+
+  try {
+    await api("deleteRow", [sessionToken, sheetKey, row, oldValues]);
+    toast("Dihapus.");
+    closeForm();
+    loadData();
+  } catch (e) {
+    formError(e);
+  }
+}
+
+function formError(e) {
+  if (String(e.message).indexOf("SESSION_EXPIRED") !== -1) {
+    handleApiError(e);
+    return;
+  }
+  document.getElementById("editError").innerText = e.message;
+  setFormBusy(false);
+}
+
+function withoutRow(rec) {
+  const o = Object.assign({}, rec);
+  delete o._row;
+  return o;
 }
 
 /* ---------- HELPER ---------- */
