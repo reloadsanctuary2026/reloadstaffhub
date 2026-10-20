@@ -1,10 +1,10 @@
 /****************************************
  * RELOAD STAFF HUB — FRONTEND (GitHub Pages)
- * Version : 2.16.0 (Home: Our Guests, Upsell, Bulletin; foto dan jabatan dari HR; tab baru)
+ * Version : 2.18.0 (Our Guests: 5 terbaru, foto bisa dibuka, catatan bisa dibaca penuh; sapaan pakai nickname)
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.16.0";
+const APP_VERSION = "2.18.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -123,6 +123,8 @@ const SHEET_LABELS = {
 
 let sessionToken = readStore_("rsh_token");
 let currentName = "";
+let currentNickname = "";
+const GUEST_HOME_LIMIT = 5;
 let currentCanEdit = false;   // dari backend (canEditTier_), satu sumber kebenaran
 let appData = null;
 let activeTab = "home";
@@ -169,6 +171,10 @@ window.addEventListener("load", async function () {
   });
   document.getElementById("logoutBtn").addEventListener("click", doLogout);
   document.getElementById("editClose").addEventListener("click", closeForm);
+  document.getElementById("guestClose").addEventListener("click", closeGuest);
+  document.getElementById("guestModal").addEventListener("click", function (e) {
+    if (e.target.id === "guestModal") closeGuest();
+  });
   document.getElementById("editSave").addEventListener("click", saveForm);
   document.getElementById("editDelete").addEventListener("click", deleteForm);
   document.getElementById("editForm").addEventListener("change", onFormChange);
@@ -212,6 +218,7 @@ function showLogin() {
 function enterApp(user) {
   hideBoot();
   currentName = user.name || "";
+  currentNickname = user.nickname || "";
   currentCanEdit = !!user.canEdit;
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("appShell").classList.remove("hidden");
@@ -263,6 +270,7 @@ function doLogout() {
 function endSession() {
   sessionToken = null;
   currentName = "";
+  currentNickname = "";
   currentCanEdit = false;
   writeStore_("rsh_token", null);
   appData = null;
@@ -299,8 +307,13 @@ function retryLoad() {
   loadData();
 }
 
+/** Sesi habis: pesan dari backend mengandung SESSION_EXPIRED. */
+function isSessionExpired(e) {
+  return String(e && e.message).indexOf("SESSION_EXPIRED") !== -1;
+}
+
 function handleApiError(e) {
-  if (String(e.message).indexOf("SESSION_EXPIRED") !== -1) {
+  if (isSessionExpired(e)) {
     toast("Sesi kamu sudah habis. Silakan masuk lagi.");
     endSession();
   } else {
@@ -348,14 +361,14 @@ function renderTab() {
 /* ---------- HOME ---------- */
 
 function viewHome() {
-  const quotes = appData.inspiration.filter(r => r.greeting === timeOfDay());
+  const quotes = appData.inspiration.filter(r => r.greeting === dayPart().key);
   const quote = quotes.length ? quotes[new Date().getDate() % quotes.length] : null;
-  const guests = appData.guests.filter(showItem);
+  const guests = newestFirst(appData.guests.filter(showItem)).slice(0, GUEST_HOME_LIMIT);
   const news = appData.bulletin.filter(showItem);
 
   return '<section class="hero">' +
-      '<div class="hero-greet">Selamat ' + greetingWord() + '</div>' +
-      '<div class="hero-name">' + esc(firstName(currentName)) + '</div>' +
+      '<div class="hero-greet">Selamat ' + dayPart().word + '</div>' +
+      '<div class="hero-name">' + esc(greetingName()) + '</div>' +
       (quote
         ? '<p class="hero-quote">“' + esc(quote.quote) + '”</p>' +
           '<cite class="hero-cite">— ' + esc(quote.author) + '</cite>' +
@@ -429,20 +442,13 @@ function bulletinCard(r) {
     editBtn("bulletin", r) + '</div></div>';
 }
 
-function timeOfDay() {
+/** Bagian hari: kunci untuk kutipan harian dan kata sapaan. */
+function dayPart() {
   const h = new Date().getHours();
-  if (h < 11) return "Morning";
-  if (h < 15) return "Afternoon";
-  if (h < 19) return "Evening";
-  return "Night";
-}
-
-function greetingWord() {
-  const h = new Date().getHours();
-  if (h < 11) return "pagi";
-  if (h < 15) return "siang";
-  if (h < 19) return "sore";
-  return "malam";
+  if (h < 11) return { key: "Morning", word: "pagi" };
+  if (h < 15) return { key: "Afternoon", word: "siang" };
+  if (h < 19) return { key: "Evening", word: "sore" };
+  return { key: "Night", word: "malam" };
 }
 
 /* ---------- MENU / SOP / ACADEMY (ada pencarian) ---------- */
@@ -471,120 +477,172 @@ function matches(fields) {
   return fields.join(" ").toLowerCase().indexOf(searchText) !== -1;
 }
 
+/** Kelompokkan item per field, judul kelompok di atas, isi dari renderBody. */
+function grouped(items, field, renderBody) {
+  return groupBy(items, field).map(g =>
+    '<h3 class="group">' + esc(g.key) + '</h3>' + renderBody(g.items)
+  ).join("");
+}
+
 function menuList(rows, sheetKey) {
   const items = rows.filter(r => r.name && matches([r.category, r.name, r.description]));
   if (!items.length) return emptyState("Tidak ada menu yang cocok.");
+  return grouped(items, "category", list =>
+    '<div class="grid">' + list.map(r => menuCard(r, sheetKey)).join("") + '</div>');
+}
 
-  return groupBy(items, "category").map(g =>
-    '<h3 class="group">' + esc(g.key) + '</h3>' +
-    '<div class="grid">' +
-    g.items.map(r =>
-      '<article class="tile">' +
-        (r.image
-          ? '<img class="tile-img" src="' + imgUrl(r.image) + '" alt="" loading="lazy">'
-          : '<div class="tile-img placeholder">' + esc(initial(r.name)) + '</div>') +
-        '<div class="tile-body">' +
-          '<div class="tile-head"><h3>' + esc(r.name) + '</h3>' +
-          '<span class="price">Rp ' + esc(r.price) + '</span></div>' +
-          '<p class="muted small pre">' + esc(r.description) + '</p>' +
-          (r.allergens ? '<span class="allergen">Alergen: ' + esc(r.allergens) + '</span>' : '') +
-          editBtn(sheetKey, r) +
-        '</div>' +
-      '</article>'
-    ).join("") +
-    '</div>'
-  ).join("");
+function menuCard(r, sheetKey) {
+  return '<article class="tile">' +
+    (r.image
+      ? '<img class="tile-img" src="' + imgUrl(r.image) + '" alt="" loading="lazy">'
+      : '<div class="tile-img placeholder">' + esc(initial(r.name)) + '</div>') +
+    '<div class="tile-body">' +
+      '<div class="tile-head"><h3>' + esc(r.name) + '</h3>' +
+      '<span class="price">Rp ' + esc(r.price) + '</span></div>' +
+      '<p class="muted small pre">' + esc(r.description) + '</p>' +
+      (r.allergens ? '<span class="allergen">Alergen: ' + esc(r.allergens) + '</span>' : '') +
+      editBtn(sheetKey, r) +
+    '</div>' +
+  '</article>';
 }
 
 function sopList() {
   const items = appData.sop.filter(r => r.name && r.file && matches([r.category, r.name, r.description]));
   if (!items.length) return emptyState("Tidak ada SOP yang cocok.");
+  return grouped(items, "category", list => list.map(sopRow).join(""));
+}
 
-  return groupBy(items, "category").map(g =>
-    '<h3 class="group">' + esc(g.key) + '</h3>' +
-    g.items.map(r =>
-      '<div class="row">' +
-        '<a class="row-main" target="_blank" rel="noopener" href="https://drive.google.com/file/d/' +
-          encodeURIComponent(r.file) + '/view">' +
-          '<strong>' + esc(r.name) + '</strong>' +
-          '<span class="small muted">Update: ' + esc(r.updated) + '</span>' +
-        '</a>' +
-        '<span class="chev">›</span>' +
-        editBtn("sop", r) +
-      '</div>'
-    ).join("")
-  ).join("");
+function sopRow(r) {
+  return '<div class="row">' +
+    '<a class="row-main" target="_blank" rel="noopener" href="https://drive.google.com/file/d/' +
+      encodeURIComponent(r.file) + '/view">' +
+      '<strong>' + esc(r.name) + '</strong>' +
+      '<span class="small muted">Update: ' + esc(r.updated) + '</span>' +
+    '</a>' +
+    '<span class="chev">›</span>' +
+    editBtn("sop", r) +
+  '</div>';
 }
 
 function academyList() {
   const items = appData.academy.filter(r => r.title && matches([r.category, r.title, r.shortDesc]));
   if (!items.length) return emptyState("Tidak ada materi yang cocok.");
+  return grouped(items, "category", list =>
+    '<div class="grid two">' + list.map(academyCard).join("") + '</div>');
+}
 
-  return groupBy(items, "category").map(g =>
-    '<h3 class="group">' + esc(g.key) + '</h3>' +
-    '<div class="grid two">' +
-    g.items.map(r =>
-      '<article class="card">' +
-        '<div class="row-between">' +
-          '<h3>' + esc(r.title) + '</h3>' +
-          (r.knowledge === "YES" ? '<span class="badge">Knowledge of the Week</span>' : '') +
-        '</div>' +
-        (r.shortDesc ? '<p class="muted small">' + esc(r.shortDesc) + '</p>' : '') +
-        '<div class="meta">' +
-          (r.difficulty ? '<span class="chip">' + esc(r.difficulty) + '</span>' : '') +
-          (r.readingTime ? '<span class="chip">' + esc(r.readingTime) + '</span>' : '') +
-          (r.updated ? '<span class="chip">Update ' + esc(r.updated) + '</span>' : '') +
-        '</div>' +
-        (r.content ? '<p class="pre muted small">' + esc(r.content) + '</p>' : '') +
-        '<div class="actions">' +
-          (r.video ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(r.video) + '">Tonton video</a>' : '') +
-          (r.fullLink ? '<a class="btn small outline" target="_blank" rel="noopener" href="' + esc(r.fullLink) + '">Baca materi</a>' : '') +
-        '</div>' +
-        editBtn("academy", r) +
-      '</article>'
-    ).join("") +
-    '</div>'
-  ).join("");
+function academyCard(r) {
+  return '<article class="card">' +
+    '<div class="row-between">' +
+      '<h3>' + esc(r.title) + '</h3>' +
+      (r.knowledge === "YES" ? '<span class="badge">Knowledge of the Week</span>' : '') +
+    '</div>' +
+    (r.shortDesc ? '<p class="muted small">' + esc(r.shortDesc) + '</p>' : '') +
+    '<div class="meta">' +
+      (r.difficulty ? '<span class="chip">' + esc(r.difficulty) + '</span>' : '') +
+      (r.readingTime ? '<span class="chip">' + esc(r.readingTime) + '</span>' : '') +
+      (r.updated ? '<span class="chip">Update ' + esc(r.updated) + '</span>' : '') +
+    '</div>' +
+    (r.content ? '<p class="pre muted small">' + esc(r.content) + '</p>' : '') +
+    '<div class="actions">' +
+      (r.video ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(r.video) + '">Tonton video</a>' : '') +
+      (r.fullLink ? '<a class="btn small outline" target="_blank" rel="noopener" href="' + esc(r.fullLink) + '">Baca materi</a>' : '') +
+    '</div>' +
+    editBtn("academy", r) +
+  '</article>';
 }
 
 /* ---------- TEAMS / GUESTS / ABOUT ---------- */
 
 function viewTeams() {
   const rows = appData.teams.filter(r => r.name);
-  return sectionHead("Our Teams", "teams") +
+  return sectionHead(SHEET_LABELS.teams, "teams") +
     (rows.length
-      ? groupBy(rows, "department").map(g =>
-          '<h3 class="group">' + esc(g.key) + '</h3>' +
-          '<div class="grid">' +
-          g.items.map(r =>
-            '<div class="person">' +
-              (r.image
-                ? '<img class="person-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">'
-                : '<div class="person-photo initials">' + esc(initials(r.name)) + '</div>') +
-              '<div class="person-name">' + esc(r.name) + '</div>' +
-              '<div class="muted">' + esc(r.position) + '</div>' +
-              (r.phone
-                ? '<a class="pill" target="_blank" rel="noopener" href="https://wa.me/' +
-                  esc(r.phone.replace(/\D/g, "")) + '">WhatsApp</a>'
-                : '') +
-              editBtn("teams", r) +
-            '</div>'
-          ).join("") +
-          '</div>'
-        ).join("")
+      ? grouped(rows, "department", list => '<div class="grid">' + list.map(personCard).join("") + '</div>')
       : emptyState("Belum ada data tim."));
 }
 
+function personCard(r) {
+  return '<div class="person">' +
+    (r.image
+      ? '<img class="person-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">'
+      : '<div class="person-photo initials">' + esc(initials(r.name)) + '</div>') +
+    '<div class="person-name">' + esc(r.name) + '</div>' +
+    '<div class="muted">' + esc(r.position) + '</div>' +
+    (r.phone
+      ? '<a class="pill" target="_blank" rel="noopener" href="https://wa.me/' + esc(r.phone.replace(/\D/g, "")) + '">WhatsApp</a>'
+      : '') +
+    editBtn("teams", r) +
+  '</div>';
+}
+
+/** Sapaan: nickname dari HR, kalau kosong pakai nama depan. */
+function greetingName() {
+  return currentNickname || firstName(currentName);
+}
+
+/**
+ * Waktu tamu dari teks tanggal sheet ("18 Sep" atau "18 Sep 2026").
+ * Tanpa tahun, dianggap tahun ini; kalau hasilnya di masa depan, tahun lalu.
+ */
+function guestTime(r) {
+  const m = String(r.date || "").trim().match(/^(\d{1,2})\s+([A-Za-z]{3})[a-z]*(?:\s+(\d{4}))?$/);
+  if (!m) return 0;
+  const mi = MONTHS_EN.findIndex(x => x.toLowerCase() === m[2].toLowerCase());
+  if (mi === -1) return 0;
+  const now = new Date();
+  let t = new Date(m[3] ? Number(m[3]) : now.getFullYear(), mi, Number(m[1])).getTime();
+  if (!m[3] && t > now.getTime() + 86400000) t = new Date(now.getFullYear() - 1, mi, Number(m[1])).getTime();
+  return t;
+}
+
+/** Terbaru di atas. Tanggal yang tidak terbaca ditaruh paling bawah. */
+function newestFirst(rows) {
+  return rows.slice().sort((a, b) => guestTime(b) - guestTime(a));
+}
+
 function guestCard(r) {
-  return '<div class="note' + inactiveClass(r) + '">' +
-    (r.image ? '<img class="thumb" src="' + imgUrl(r.image) + '" alt="" loading="lazy">' : '') +
+  const long = String(r.description || "").length > 140;
+  return '<div class="note guest' + inactiveClass(r) + '">' +
+    (r.image
+      ? '<button class="guest-photo" type="button" onclick="openGuest(' + r._row + ')" aria-label="Lihat detail ' + esc(r.guest) + '">' +
+          '<img src="' + imgUrl(r.image) + '" alt="" loading="lazy"></button>'
+      : '') +
     '<div class="note-body">' +
       '<div class="row-between"><strong>' + esc(r.guest) + '</strong>' +
       '<span class="badge">' + esc(r.category) + '</span>' + statusBadge(r) + '</div>' +
       '<div class="small muted">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</div>' +
-      '<p class="pre muted small">' + esc(r.description) + '</p>' +
+      '<p class="clamp" id="guest-text-' + r._row + '">' + esc(r.description) + '</p>' +
+      (long ? '<button class="more" type="button" onclick="toggleMore(' + r._row + ')">Baca selengkapnya</button>' : '') +
       editBtn("guests", r) +
-    '</div></div>';
+    '</div>' +
+  '</div>';
+}
+
+function toggleMore(row) {
+  const text = document.getElementById("guest-text-" + row);
+  const btn = text.nextElementSibling;
+  const open = text.classList.toggle("open");
+  btn.innerText = open ? "Tutup" : "Baca selengkapnya";
+}
+
+/** Detail tamu: foto besar dan catatan lengkap. */
+function openGuest(row) {
+  const r = (appData.guests || []).find(x => x._row === row);
+  if (!r) return toast("Data sudah tidak ada. Refresh dulu.");
+  document.getElementById("guestBody").innerHTML =
+    (r.image ? '<img class="guest-hero" src="' + imgUrl(r.image) + '" alt="' + esc(r.guest) + '">' : '') +
+    '<div class="row-between"><strong class="guest-name">' + esc(r.guest) + '</strong>' +
+      '<span class="badge">' + esc(r.category) + '</span></div>' +
+    '<div class="small muted">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</div>' +
+    '<p class="pre guest-full">' + esc(r.description) + '</p>' +
+    editBtn("guests", r);
+  document.getElementById("guestModal").classList.remove("hidden");
+}
+
+function closeGuest() {
+  const modal = document.getElementById("guestModal");
+  if (modal) modal.classList.add("hidden");
 }
 
 function viewAbout() {
@@ -628,9 +686,7 @@ function canEdit() {
  */
 /** Tanggal baris (format sheet, misalnya "20 Oct 2026") sama dengan hari ini? */
 function isToday(sheetDate) {
-  const d = new Date();
-  const today = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
-  return isoFromSheetDate(sheetDate) === today;
+  return isoFromSheetDate(sheetDate) === isoDate(new Date());
 }
 
 /** Satu definisi "aktif". Semua pengecekan status lewat sini. */
@@ -677,6 +733,7 @@ function openAdd(sheetKey) {
 }
 
 function openEdit(sheetKey, row) {
+  closeGuest();
   const rec = (appData[sheetKey] || []).find(r => r._row === row);
   if (!rec) return toast("Data sudah tidak ada. Refresh dulu.");
 
@@ -903,6 +960,15 @@ async function deleteForm() {
 
 const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+
+/** Tanggal dalam format YYYY-MM-DD (untuk perbandingan). */
+function isoDate(d) {
+  return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+}
+
 /** Format yang dipakai sheet: "5 Oct 2026". */
 function formatSheetDate(d) {
   return d.getDate() + " " + MONTHS_EN[d.getMonth()] + " " + d.getFullYear();
@@ -914,7 +980,7 @@ function isoFromSheetDate(v) {
   if (!m) return "";
   const mi = MONTHS_EN.findIndex(x => x.toLowerCase() === m[2].toLowerCase());
   if (mi === -1) return "";
-  return m[3] + "-" + String(mi + 1).padStart(2, "0") + "-" + String(m[1]).padStart(2, "0");
+  return m[3] + "-" + pad2(mi + 1) + "-" + pad2(Number(m[1]));
 }
 
 /* ---------- UPLOAD FOTO & PDF ---------- */
@@ -983,7 +1049,7 @@ async function onFileChosen(input) {
       document.querySelector('[data-note="' + f.key + '"]').innerText = "File baru sudah terunggah.";
     }
   } catch (e) {
-    if (String(e.message).indexOf("SESSION_EXPIRED") !== -1) {
+    if (isSessionExpired(e)) {
       handleApiError(e);
       return;
     }
@@ -1024,7 +1090,7 @@ function readAsBase64(file) {
 }
 
 function formError(e) {
-  if (String(e.message).indexOf("SESSION_EXPIRED") !== -1) {
+  if (isSessionExpired(e)) {
     handleApiError(e);
     return;
   }

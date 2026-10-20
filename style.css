@@ -500,3 +500,20 @@ ul.plain li:last-child { border-bottom: 0; }
 /* Ikon tab Home */
 .nav-icon { display: inline-flex; width: 20px; height: 20px; }
 .nav-icon svg { width: 20px; height: 20px; fill: currentColor; display: block; }
+
+/* Our Guests: foto bisa diklik, catatan bisa dibuka */
+.guest-photo { flex: 0 0 76px; padding: 0; border: 0; background: none; cursor: pointer; }
+.guest-photo img { width: 76px; height: 76px; object-fit: cover; border-radius: 12px; display: block; }
+.clamp {
+  margin: 6px 0 0; white-space: pre-line;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+}
+.clamp.open { display: block; -webkit-line-clamp: unset; overflow: visible; }
+.more {
+  background: none; border: 0; padding: 4px 0 0; color: var(--accent);
+  font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
+}
+.guest-box { max-width: 520px; }
+.guest-hero { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 16px; margin-bottom: 14px; display: block; }
+.guest-name { font-size: 18px; }
+.guest-full { margin-top: 12px; }

@@ -4,6 +4,18 @@ Setiap update frontend menaikkan versi di `app.js` (`APP_VERSION`), `style.css?v
 
 Versi backend (`Code.gs`) dicatat terpisah di bawah.
 
+## 2.18.0
+- Sapaan di Home memakai Nickname dari HR. Kalau kosong, pakai nama depan.
+- Our Guests di Home: 5 tamu terakhir, urut dari yang terbaru.
+- Foto tamu bisa diklik untuk melihat detail: foto besar, nama, kategori, dan catatan lengkap.
+- Catatan panjang dipotong, dengan tombol "Baca selengkapnya".
+- Perbaikan: di 2.17.0, bagian Our Guests bisa error saat ada data tamu. Sudah diperbaiki.
+- Backend 2.13.0: membaca kolom Nickname dari HR (opsional).
+
+## 2.17.0
+- Login lebih cepat: daftar karyawan dari HR dicache 10 menit. PIN disimpan sebagai hash.
+- Rapi-rapi kode: cek sesi habis di satu tempat, pola daftar per kelompok di satu helper, bagian hari di satu fungsi, dan cara ambil sheet di satu tempat.
+
 ## 2.16.0
 - Foto dan jabatan karyawan diambil dari HR Sheet (kolom Photo dan Job Title/Position). Kalau foto diganti di HR, berubah di app dalam 10 menit.
 - Header: judul lebih besar, profil di kanan berisi foto, nama, dan jabatan. Tier tidak ditampilkan lagi.
