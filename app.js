@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.26.6";
+const APP_VERSION = "2.26.7";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -692,21 +692,23 @@ function newestFirst(rows) {
   return rows.slice().sort((a, b) => compareGuests(a, b, true));
 }
 
-/** Kartu tamu di Home: foto dan nama di kiri, catatan 50 karakter di kanan. Di layar sempit, catatan turun ke bawah. */
+/** Kartu tamu di Home: foto dan nama di atas, potongan catatan, lalu Read more dan Edit sebaris. */
 function guestCard(r) {
   const text = String(r.description || "");
   const long = text.length > GUEST_PREVIEW_CHARS;
   const snippet = long ? text.slice(0, GUEST_PREVIEW_CHARS).trimEnd() + "…" : text;
   return '<div class="note guest' + inactiveClass(r) + '">' +
-    (r.image
-      ? '<img class="guest-card-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">'
-      : '<div class="guest-card-photo gph">' + esc(initial(r.guest)) + '</div>') +
-    '<div class="guest-card-main">' +
-      '<strong>' + esc(r.guest) + '</strong>' +
-      '<span class="small muted">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</span>' +
+    '<div class="guest-card-head">' +
+      (r.image
+        ? '<img class="guest-card-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">'
+        : '<div class="guest-card-photo gph">' + esc(initial(r.guest)) + '</div>') +
+      '<div class="guest-card-main">' +
+        '<strong>' + esc(r.guest) + '</strong>' +
+        '<span class="small muted">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</span>' +
+      '</div>' +
     '</div>' +
-    '<div class="guest-card-side">' +
-      (snippet ? '<p class="guest-card-text">' + esc(snippet) + '</p>' : '') +
+    (snippet ? '<p class="guest-card-text">' + esc(snippet) + '</p>' : '') +
+    '<div class="guest-card-actions">' +
       (long ? '<button class="more" type="button" onclick="openGuest(' + r._row + ')">Read more</button>' : '') +
       editBtn("guests", r) +
     '</div>' +

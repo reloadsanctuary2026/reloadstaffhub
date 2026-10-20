@@ -599,19 +599,18 @@ ul.plain li:last-child { border-bottom: 0; }
   .progress-line > div, .btn.loading::after, .mini-spinner { animation: none; }
 }
 
-/* Kartu tamu di Home: satu baris, foto dan nama di kiri, catatan di kanan */
-.note.guest { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 12px; margin-bottom: 10px; }
+/* Kartu tamu di Home: foto dan nama di atas, catatan, lalu Read more dan Edit sebaris */
+.note.guest { display: block; padding: 12px; margin-bottom: 10px; }
+.guest-card-head { display: flex; align-items: center; gap: 12px; }
 .guest-card-photo {
-  width: 52px; height: 52px; flex: 0 0 52px; border-radius: 12px; object-fit: cover; display: block;
+  width: 52px; height: 52px; flex: 0 0 52px; border-radius: 12px; object-fit: cover; display: flex; align-items: center; justify-content: center;
   background: var(--elevated); font-weight: 800; color: rgba(170, 118, 85, 0.6);
-  display: flex; align-items: center; justify-content: center;
 }
-.guest-card-main { flex: 1 1 150px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.guest-card-main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .guest-card-main strong { font-size: 14px; line-height: 1.25; }
-.guest-card-side { flex: 2 1 200px; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
-.guest-card-text { margin: 0; font-size: 13px; line-height: 1.4; color: var(--muted); }
-.note.guest .more { margin-top: 0; }
-.note.guest .edit-btn { margin-top: 0; }
+.guest-card-text { margin: 8px 0 0; font-size: 13px; line-height: 1.4; color: var(--muted); }
+.guest-card-actions { display: flex; align-items: center; gap: 10px; margin-top: 6px; flex-wrap: wrap; }
+.note.guest .more, .note.guest .edit-btn { margin: 0; }
 
 /* Tamu nonaktif: abu gelap, sedikit lebih terang saat hover */
 .note.guest.is-inactive, .guest-tile.is-inactive, .guest-line.is-inactive {
