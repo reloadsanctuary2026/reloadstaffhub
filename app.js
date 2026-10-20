@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.26.7";
+const APP_VERSION = "2.26.8";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -130,7 +130,9 @@ let sessionToken = readStore_("rsh_token");
 let currentName = "";
 let currentNickname = "";
 const GUEST_HOME_LIMIT = 5;
-const GUEST_PREVIEW_CHARS = 50;   // potongan catatan di kartu Home, sisanya lewat Read more
+const GUEST_PREVIEW_PHONE = 50;    // potongan catatan di HP
+const GUEST_PREVIEW_DESKTOP = 80;  // potongan catatan di desktop
+const BULLETIN_HOME_LIMIT = 5;
 let currentCanEdit = false;   // dari backend (canEditTier_), satu sumber kebenaran
 let appData = null;
 let activeTab = "home";
@@ -442,7 +444,7 @@ function viewHome() {
   const quotes = appData.inspiration.filter(r => r.greeting === dayPart().key);
   const quote = quotes.length ? quotes[new Date().getDate() % quotes.length] : null;
   const guests = newestFirst(appData.guests.filter(isActive)).slice(0, GUEST_HOME_LIMIT);
-  const news = appData.bulletin.filter(showItem);
+  const news = newestFirst(appData.bulletin.filter(isActive)).slice(0, BULLETIN_HOME_LIMIT);
 
   return '<section class="hero">' +
       '<div class="hero-greet">Good ' + dayPart().word + '</div>' +
@@ -461,7 +463,7 @@ function viewHome() {
         '<button class="ghost small-link" type="button" onclick="openGuestsLanding()">View all</button>') +
       homeCol("Upsell Today", "upsell", upsellPanel()) +
       homeCol("Staff Bulletin", "bulletin",
-        news.length ? listWithInactive(news, bulletinCard) : emptyState("No active bulletin yet.")) +
+        news.length ? news.map(bulletinCard).join("") : emptyState("No active bulletin yet.")) +
     '</div>';
 }
 
@@ -692,11 +694,19 @@ function newestFirst(rows) {
   return rows.slice().sort((a, b) => compareGuests(a, b, true));
 }
 
-/** Kartu tamu di Home: foto dan nama di atas, potongan catatan, lalu Read more dan Edit sebaris. */
+/** Potongan teks sepanjang n karakter, diberi "…" kalau dipotong. */
+function clipText(text, n) {
+  return text.length > n ? text.slice(0, n).trimEnd() + "…" : text;
+}
+
+/**
+ * Kartu tamu di Home. Potongan catatan 50 karakter di HP dan 80 di desktop (diatur CSS).
+ * Read more hanya membuka teks di tempat, tidak membuka pop-up.
+ */
 function guestCard(r) {
   const text = String(r.description || "");
-  const long = text.length > GUEST_PREVIEW_CHARS;
-  const snippet = long ? text.slice(0, GUEST_PREVIEW_CHARS).trimEnd() + "…" : text;
+  const phoneMore = text.length > GUEST_PREVIEW_PHONE;
+  const desktopMore = text.length > GUEST_PREVIEW_DESKTOP;
   return '<div class="note guest' + inactiveClass(r) + '">' +
     '<div class="guest-card-head">' +
       (r.image
@@ -707,12 +717,28 @@ function guestCard(r) {
         '<span class="small muted">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</span>' +
       '</div>' +
     '</div>' +
-    (snippet ? '<p class="guest-card-text">' + esc(snippet) + '</p>' : '') +
-    '<div class="guest-card-actions">' +
-      (long ? '<button class="more" type="button" onclick="openGuest(' + r._row + ')">Read more</button>' : '') +
-      editBtn("guests", r) +
+    '<div class="guest-card-side">' +
+      (text
+        ? '<p class="guest-card-text">' +
+            '<span class="gc-s">' + esc(clipText(text, GUEST_PREVIEW_PHONE)) + '</span>' +
+            '<span class="gc-m">' + esc(clipText(text, GUEST_PREVIEW_DESKTOP)) + '</span>' +
+            '<span class="gc-full">' + esc(text) + '</span>' +
+          '</p>'
+        : '') +
+      '<div class="guest-card-actions">' +
+        (phoneMore ? '<button class="more more-s" type="button" onclick="toggleGuestText(this)">Read more</button>' : '') +
+        (desktopMore ? '<button class="more more-m" type="button" onclick="toggleGuestText(this)">Read more</button>' : '') +
+        editBtn("guests", r) +
+      '</div>' +
     '</div>' +
   '</div>';
+}
+
+/** Buka atau tutup teks catatan di dalam kartu. */
+function toggleGuestText(btn) {
+  const card = btn.closest(".guest");
+  const open = card.classList.toggle("open");
+  card.querySelectorAll(".more").forEach(b => { b.innerText = open ? "Show less" : "Read more"; });
 }
 
 /** Detail tamu: foto besar dan catatan lengkap. */
