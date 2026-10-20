@@ -318,6 +318,20 @@ main#app { padding-top: 22px; padding-bottom: 48px; }
   padding: 4px 10px; border-radius: 999px;
 }
 
+/* Form: checkbox alergen dan kotak "+ Baru…" */
+.checks { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.check {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--elevated); border: 1px solid var(--border);
+  border-radius: 999px; padding: 7px 13px; font-size: 13px; cursor: pointer;
+}
+.check input { accent-color: var(--accent); width: 15px; height: 15px; margin: 0; }
+.new-input { margin-top: 8px; }
+
+/* Item nonaktif (hanya terlihat oleh editor) */
+.badge.off { background: var(--elevated); color: var(--muted); }
+.note.is-inactive { opacity: 0.6; border-style: dashed; }
+
 /* Academy */
 .meta { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 0; }
 .chip {

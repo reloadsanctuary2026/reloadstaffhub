@@ -1,10 +1,10 @@
 /****************************************
  * RELOAD STAFF HUB — FRONTEND (GitHub Pages)
- * Version : 2.7.0 (palet brand Reload, font Poppins, logo R)
+ * Version : 2.9.0 (form tanpa ketik bebas: dropdown, date picker, checkbox)
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.7.1";
+const APP_VERSION = "2.9.0";
 
 const TABS = [
   { key: "home",     label: "Home" },
@@ -17,78 +17,88 @@ const TABS = [
   { key: "about",    label: "About" }
 ];
 
-/* Field yang tampil di form, per sheet. Harus mencakup semua kolom sheet. */
-const MENU_FIELDS = [
-  { key: "category",    label: "Kategori" },
-  { key: "name",        label: "Nama" },
-  { key: "description", label: "Deskripsi", multi: true },
-  { key: "allergens",   label: "Alergen" },
-  { key: "price",       label: "Harga" },
-  { key: "image",       label: "ID gambar (Drive)" }
-];
-
+/*
+ * Konfigurasi form. Tiap field punya cara isi sendiri, supaya pengguna tidak perlu mengetik
+ * yang sebenarnya bisa dipilih:
+ *   input: "date" | "today" | "price" | "phone" | "drive" | "url" | "multi" | "allergens"
+ *          (kosong = teks biasa)
+ *   options: daftar pilihan tetap
+ *   src: true = pilihan diambil dari nilai yang sudah ada di sheet, plus "+ Baru…"
+ */
 const STATUS_OPTIONS = ["ACTIVE", "INACTIVE"];
+const ALLERGEN_OPTIONS = ["Gluten", "Milk", "Egg", "Nut", "Seafood", "Soy"];
+const DIFFICULTY_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
+const SECTION_OPTIONS = ["Company Story", "Vision", "Mission", "Identity & Essences", "Core Values"];
+
+const MENU_FIELDS = [
+  { key: "category",    label: "Kategori", src: true },
+  { key: "name",        label: "Nama menu" },
+  { key: "description", label: "Deskripsi", input: "multi" },
+  { key: "allergens",   label: "Alergen", input: "allergens" },
+  { key: "price",       label: "Harga (Rp)", input: "price" },
+  { key: "image",       label: "Foto", input: "drive" }
+];
 
 const EDIT_FIELDS = {
   importantInfo: [
-    { key: "date",        label: "Tanggal" },
+    { key: "date",        label: "Tanggal", input: "date" },
     { key: "title",       label: "Judul" },
-    { key: "description", label: "Deskripsi", multi: true },
+    { key: "description", label: "Deskripsi", input: "multi" },
     { key: "status",      label: "Status", options: STATUS_OPTIONS }
   ],
   bulletin: [
-    { key: "date",        label: "Tanggal" },
-    { key: "type",        label: "Tipe" },
+    { key: "date",        label: "Tanggal", input: "date" },
+    { key: "type",        label: "Tipe", src: true },
     { key: "title",       label: "Judul" },
-    { key: "description", label: "Deskripsi", multi: true },
-    { key: "image",       label: "ID gambar (Drive)" },
+    { key: "description", label: "Deskripsi", input: "multi" },
+    { key: "image",       label: "Foto", input: "drive" },
     { key: "status",      label: "Status", options: STATUS_OPTIONS }
   ],
   food: MENU_FIELDS,
   beverage: MENU_FIELDS,
   sop: [
-    { key: "category",    label: "Kategori" },
+    { key: "category",    label: "Kategori", src: true },
     { key: "name",        label: "Nama SOP" },
-    { key: "description", label: "Deskripsi", multi: true },
-    { key: "file",        label: "ID file Drive" },
-    { key: "updated",     label: "Terakhir diupdate" }
+    { key: "description", label: "Deskripsi", input: "multi" },
+    { key: "file",        label: "File SOP", input: "drive" },
+    { key: "updated",     label: "Terakhir diupdate", input: "today" }
   ],
   teams: [
-    { key: "department", label: "Departemen" },
-    { key: "position",   label: "Jabatan" },
-    { key: "name",       label: "Nama" },
-    { key: "image",      label: "ID foto (Drive)" },
-    { key: "phone",      label: "Nomor HP (628...)" }
+    { key: "department",  label: "Departemen", src: true },
+    { key: "position",    label: "Jabatan", src: true },
+    { key: "name",        label: "Nama" },
+    { key: "image",       label: "Foto", input: "drive" },
+    { key: "phone",       label: "Nomor WhatsApp", input: "phone" }
   ],
   about: [
-    { key: "section", label: "Bagian" },
-    { key: "content", label: "Isi", multi: true }
+    { key: "section",     label: "Bagian", options: SECTION_OPTIONS, src: true },
+    { key: "content",     label: "Isi", input: "multi" }
   ],
   guests: [
-    { key: "date",        label: "Tanggal" },
-    { key: "category",    label: "Kategori" },
+    { key: "date",        label: "Tanggal", input: "date" },
+    { key: "category",    label: "Kategori", src: true },
     { key: "guest",       label: "Nama tamu" },
     { key: "title",       label: "Judul" },
-    { key: "description", label: "Deskripsi", multi: true },
-    { key: "image",       label: "ID gambar (Drive)" },
+    { key: "description", label: "Deskripsi", input: "multi" },
+    { key: "image",       label: "Foto", input: "drive" },
     { key: "status",      label: "Status", options: STATUS_OPTIONS }
   ],
   academy: [
-    { key: "category",    label: "Kategori" },
+    { key: "category",    label: "Kategori", src: true },
     { key: "title",       label: "Judul" },
     { key: "shortDesc",   label: "Deskripsi singkat" },
-    { key: "content",     label: "Isi materi", multi: true },
-    { key: "fullLink",    label: "Link materi" },
-    { key: "video",       label: "Link video" },
-    { key: "readingTime", label: "Waktu baca" },
-    { key: "knowledge",   label: "Knowledge of the Week", options: ["YES", "NO"] },
-    { key: "updated",     label: "Terakhir diupdate" },
-    { key: "difficulty",  label: "Tingkat kesulitan" }
+    { key: "content",     label: "Isi materi", input: "multi" },
+    { key: "fullLink",    label: "Link materi", input: "url" },
+    { key: "video",       label: "Link video", input: "url" },
+    { key: "readingTime", label: "Waktu baca", src: true },
+    { key: "knowledge",   label: "Knowledge of the Week", options: ["NO", "YES"] },
+    { key: "updated",     label: "Terakhir diupdate", input: "today" },
+    { key: "difficulty",  label: "Tingkat kesulitan", options: DIFFICULTY_OPTIONS, src: true }
   ],
   inspiration: [
-    { key: "greeting", label: "Waktu", options: ["Morning", "Afternoon", "Evening", "Night"] },
-    { key: "quote",    label: "Quote", multi: true },
-    { key: "author",   label: "Penulis" }
+    { key: "greeting",    label: "Waktu", options: ["Morning", "Afternoon", "Evening", "Night"] },
+    { key: "quote",       label: "Quote", input: "multi" },
+    { key: "author",      label: "Penulis", src: true }
   ]
 };
 
@@ -107,7 +117,7 @@ const SHEET_LABELS = {
 
 let sessionToken = readStore_("rsh_token");
 let currentName = "";
-let currentTier = "";
+let currentCanEdit = false;   // dari backend (canEditTier_), satu sumber kebenaran
 let appData = null;
 let activeTab = "home";
 let searchText = "";
@@ -155,6 +165,7 @@ window.addEventListener("load", async function () {
   document.getElementById("editClose").addEventListener("click", closeForm);
   document.getElementById("editSave").addEventListener("click", saveForm);
   document.getElementById("editDelete").addEventListener("click", deleteForm);
+  document.getElementById("editForm").addEventListener("change", onFormChange);
   document.getElementById("editModal").addEventListener("click", function (e) {
     if (e.target.id === "editModal") closeForm();
   });
@@ -180,11 +191,12 @@ function showLogin() {
 
 function enterApp(user) {
   currentName = user.name || "";
-  currentTier = user.tier || "";
+  currentCanEdit = !!user.canEdit;
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("appShell").classList.remove("hidden");
   document.getElementById("userName").innerText = currentName;
-  document.getElementById("userTier").innerText = currentTier;
+  document.getElementById("userTier").innerText =
+    (user.tier || "") + " · " + (currentCanEdit ? "Mode edit" : "Mode baca");
   document.getElementById("userInitials").innerText = initials(currentName);
   renderTabbar();
   loadData();
@@ -231,7 +243,7 @@ function doLogout() {
 function endSession() {
   sessionToken = null;
   currentName = "";
-  currentTier = "";
+  currentCanEdit = false;
   writeStore_("rsh_token", null);
   appData = null;
   closeForm();
@@ -299,7 +311,7 @@ function viewHome() {
   const info = appData.importantInfo.find(r => r.status === "ACTIVE");
   const quotes = appData.inspiration.filter(r => r.greeting === timeOfDay());
   const quote = quotes.length ? quotes[new Date().getDate() % quotes.length] : null;
-  const news = appData.bulletin.filter(r => r.status === "ACTIVE");
+  const news = appData.bulletin.filter(showItem);
 
   return '<section class="hero">' +
       '<div class="hero-greet">Selamat ' + greetingWord() + '</div>' +
@@ -325,8 +337,8 @@ function viewHome() {
     sectionHead("Staff Bulletin", "bulletin") +
     (news.length
       ? news.map(r =>
-          '<div class="note"><div class="note-body">' +
-            '<div class="small muted">' + esc(r.date) + (r.type ? ' · ' + esc(r.type) : '') + '</div>' +
+          '<div class="note' + inactiveClass(r) + '"><div class="note-body">' +
+            '<div class="small muted">' + esc(r.date) + (r.type ? ' · ' + esc(r.type) : '') + statusBadge(r) + '</div>' +
             '<div class="note-title">' + esc(r.title) + '</div>' +
             '<p class="pre muted">' + esc(r.description) + '</p>' +
             editBtn("bulletin", r) +
@@ -482,16 +494,16 @@ function viewTeams() {
 }
 
 function viewGuests() {
-  const rows = appData.guests.filter(r => r.status === "ACTIVE");
+  const rows = appData.guests.filter(showItem);
   return sectionHead("Guest Notes", "guests") +
     (rows.length
       ? rows.map(r =>
-          '<div class="note">' +
+          '<div class="note' + inactiveClass(r) + '">' +
             (r.image ? '<img class="thumb" src="' + imgUrl(r.image) + '" alt="" loading="lazy">' : '') +
             '<div class="note-body">' +
               '<div class="row-between">' +
                 '<strong>' + esc(r.guest) + '</strong>' +
-                '<span class="badge">' + esc(r.category) + '</span>' +
+                '<span class="badge">' + esc(r.category) + '</span>' + statusBadge(r) +
               '</div>' +
               '<div class="small muted">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</div>' +
               '<p class="pre muted small">' + esc(r.description) + '</p>' +
@@ -518,8 +530,27 @@ function viewAbout() {
 
 /* ---------- TOMBOL EDIT / TAMBAH ---------- */
 
+/** Satu definisi "boleh edit": dari backend. Dipakai semua tombol tambah/edit/hapus. */
 function canEdit() {
-  return !!currentTier && currentTier !== "Staff";
+  return currentCanEdit;
+}
+
+/**
+ * Item yang tampil: staff hanya lihat yang ACTIVE, editor lihat semua
+ * supaya bisa mengaktifkan lagi item yang nonaktif.
+ */
+function showItem(rec) {
+  return currentCanEdit || rec.status === "ACTIVE";
+}
+
+function inactiveClass(rec) {
+  return rec.status === "ACTIVE" ? "" : " is-inactive";
+}
+
+/** Label "Nonaktif" hanya untuk editor. Staff tidak pernah melihat item nonaktif. */
+function statusBadge(rec) {
+  if (!currentCanEdit || rec.status === "ACTIVE") return "";
+  return ' <span class="badge off">Nonaktif</span>';
 }
 
 function sectionHead(title, sheetKey) {
@@ -541,7 +572,7 @@ function editBtn(sheetKey, rec) {
 
 function openAdd(sheetKey) {
   const blank = {};
-  EDIT_FIELDS[sheetKey].forEach(f => { blank[f.key] = f.options ? f.options[0] : ""; });
+  EDIT_FIELDS[sheetKey].forEach(f => { blank[f.key] = defaultValue(sheetKey, f); });
   formState = { mode: "add", sheetKey: sheetKey, row: null, original: blank };
   showForm("Tambah " + SHEET_LABELS[sheetKey], blank, false);
 }
@@ -555,8 +586,9 @@ function openEdit(sheetKey, row) {
 }
 
 function showForm(title, values, canDelete) {
+  const sheetKey = formState.sheetKey;
   document.getElementById("editForm").innerHTML =
-    EDIT_FIELDS[formState.sheetKey].map(f => fieldHtml(f, values[f.key])).join("");
+    EDIT_FIELDS[sheetKey].map(f => fieldHtml(sheetKey, f, values[f.key])).join("");
   document.getElementById("editTitle").innerText = title;
   document.getElementById("editError").innerText = "";
   setFormBusy(false);
@@ -576,30 +608,148 @@ function setFormBusy(busy) {
   document.getElementById("editSave").innerText = busy ? "Menyimpan..." : "Simpan";
 }
 
-function fieldHtml(f, value) {
-  const v = value == null ? "" : value;
-  let input;
-  if (f.options) {
-    // Kalau nilai di sheet tidak ada di pilihan, tetap tampilkan supaya tidak berubah diam-diam.
-    const opts = f.options.indexOf(v) === -1 ? [v].concat(f.options) : f.options;
-    input = '<select class="input" data-key="' + f.key + '">' +
-      opts.map(o => '<option value="' + esc(o) + '"' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>').join("") +
-      '</select>';
-  } else if (f.multi) {
-    input = '<textarea class="input" rows="4" data-key="' + f.key + '">' + esc(v) + '</textarea>';
-  } else {
-    input = '<input class="input" type="text" data-key="' + f.key + '" value="' + esc(v) + '">';
+/* ---------- NILAI DEFAULT & PILIHAN ---------- */
+
+/** Nilai awal saat tambah baru. */
+function defaultValue(sheetKey, f) {
+  if (f.input === "date" || f.input === "today") return formatSheetDate(new Date());
+  if (f.input === "phone") return "62";
+  if (f.options) return f.options[0];
+  if (f.src) {
+    const list = distinctValues(sheetKey, f.key);
+    return list.length ? list[0] : "";
   }
-  return '<label class="field"><span class="caption-label">' + esc(f.label) + '</span>' + input + '</label>';
+  return "";
 }
 
-/** Isi form dibaca ulang, dicampur dengan isi asli supaya kolom yang tidak tampil tidak ikut kosong. */
+/** Nilai unik dari sheet, dipakai sebagai pilihan (satu sumber: data itu sendiri). */
+function distinctValues(sheetKey, key) {
+  const seen = [];
+  (appData[sheetKey] || []).forEach(r => {
+    const v = String(r[key] || "").trim();
+    if (v && seen.indexOf(v) === -1) seen.push(v);
+  });
+  return seen.sort((a, b) => a.localeCompare(b));
+}
+
+function optionList(sheetKey, f) {
+  const list = (f.options || []).slice();
+  if (f.src) {
+    distinctValues(sheetKey, f.key).forEach(v => {
+      if (list.indexOf(v) === -1) list.push(v);
+    });
+  }
+  return list;
+}
+
+/* ---------- INPUT PER TIPE ---------- */
+
+function fieldHtml(sheetKey, f, value) {
+  const v = value == null ? "" : String(value);
+  return '<div class="field"><span class="caption-label">' + esc(f.label) + '</span>' +
+    fieldInput(sheetKey, f, v) + '</div>';
+}
+
+function fieldInput(sheetKey, f, v) {
+  const key = 'data-key="' + f.key + '"';
+
+  if (f.input === "allergens") return checksHtml(f, v);
+  if (f.input === "today") return '<input class="input" type="text" readonly ' + key + ' value="' + esc(v) + '">';
+  if (f.input === "date") return '<input class="input" type="date" ' + key + ' value="' + esc(isoFromSheetDate(v)) + '">';
+  if (f.input === "price") return '<input class="input" type="number" inputmode="numeric" min="0" step="500" ' + key + ' value="' + esc(v.replace(/\D/g, "")) + '">';
+  if (f.input === "phone") return '<input class="input" type="tel" inputmode="numeric" ' + key + ' value="' + esc(v) + '" placeholder="628...">';
+  if (f.input === "drive") return '<input class="input" type="text" ' + key + ' value="' + esc(v) + '" placeholder="Tempel link Google Drive">';
+  if (f.input === "url") return '<input class="input" type="url" ' + key + ' value="' + esc(v) + '" placeholder="https://...">';
+  if (f.input === "multi") return '<textarea class="input" rows="4" ' + key + '>' + esc(v) + '</textarea>';
+  if (f.options || f.src) return selectHtml(sheetKey, f, v);
+  return '<input class="input" type="text" ' + key + ' value="' + esc(v) + '">';
+}
+
+/** Dropdown. Kalau src, ada "+ Baru…" yang memunculkan kotak isian. */
+function selectHtml(sheetKey, f, v) {
+  let opts = optionList(sheetKey, f);
+  if (v && opts.indexOf(v) === -1) opts = [v].concat(opts);   // nilai lama tetap tampil apa adanya
+
+  const isNew = f.src && !v && opts.length === 0;
+  const blank = !v && opts.length > 0 ? '<option value="" selected>— pilih —</option>' : '';
+
+  return '<select class="input" data-key="' + f.key + '">' + blank +
+    opts.map(o => '<option value="' + esc(o) + '"' + (o === v ? ' selected' : '') + '>' + esc(o) + '</option>').join("") +
+    (f.src ? '<option value="__new__"' + (isNew ? ' selected' : '') + '>+ Baru…</option>' : '') +
+    '</select>' +
+    (f.src ? '<input class="input new-input' + (isNew ? '' : ' hidden') + '" type="text" data-new-for="' + f.key + '" placeholder="Tulis nilai baru">' : '');
+}
+
+/** Checkbox alergen. Nilai lama yang tidak ada di daftar tetap ditampilkan dan dicentang. */
+function checksHtml(f, v) {
+  const current = v.split(",").map(s => s.trim()).filter(Boolean);
+  const all = ALLERGEN_OPTIONS.concat(current.filter(x => ALLERGEN_OPTIONS.indexOf(x) === -1));
+  return '<div class="checks">' + all.map(o =>
+    '<label class="check"><input type="checkbox" data-check="' + f.key + '" value="' + esc(o) + '"' +
+      (current.indexOf(o) !== -1 ? ' checked' : '') + '> ' + esc(o) + '</label>'
+  ).join("") + '</div>';
+}
+
+/** Kotak "+ Baru…" muncul hanya saat dipilih. */
+function onFormChange(e) {
+  const sel = e.target;
+  if (!sel.matches || !sel.matches("select[data-key]")) return;
+  const box = document.querySelector('#editForm [data-new-for="' + sel.dataset.key + '"]');
+  if (!box) return;
+  const isNew = sel.value === "__new__";
+  box.classList.toggle("hidden", !isNew);
+  if (isNew) box.focus();
+}
+
+/* ---------- BACA FORM ---------- */
+
+/**
+ * Isi form dibaca ulang. Kolom yang tidak diubah (readonly, atau tanggal yang formatnya lama
+ * dan tidak bisa dibaca date picker) memakai nilai asli, supaya tidak ada yang kosong diam-diam.
+ */
 function readForm() {
+  const sheetKey = formState.sheetKey;
   const values = Object.assign({}, withoutRow(formState.original));
-  document.querySelectorAll("#editForm [data-key]").forEach(function (el) {
-    values[el.dataset.key] = el.value;
+
+  EDIT_FIELDS[sheetKey].forEach(f => {
+    const v = readValue(f);
+    if (v !== undefined) values[f.key] = v;
   });
   return values;
+}
+
+/** Balikin undefined kalau kolom ini sebaiknya pakai nilai asli. */
+function readValue(f) {
+  if (f.input === "allergens") {
+    return Array.from(document.querySelectorAll('input[data-check="' + f.key + '"]:checked'))
+      .map(x => x.value).join(",");
+  }
+  if (f.input === "today") return undefined;
+
+  const el = document.querySelector('#editForm [data-key="' + f.key + '"]');
+  if (!el) return undefined;
+  const raw = el.value;
+
+  if (f.input === "date") return raw ? formatSheetDate(new Date(raw + "T00:00:00")) : undefined;
+  if (f.input === "price") return raw ? Number(raw).toLocaleString("en-US") : "";
+  if (f.input === "phone") return raw.replace(/\D/g, "");
+  if (f.input === "drive") {
+    const id = extractDriveId(raw);
+    if (id === null) throw new Error("Link Google Drive untuk " + f.label + " tidak valid. Tempel link lengkap dari Drive.");
+    return id;
+  }
+  if (f.input === "url") {
+    const t = raw.trim();
+    if (t && !/^https?:\/\//i.test(t)) throw new Error(f.label + " harus diawali https://");
+    return t;
+  }
+  if (el.tagName === "SELECT" && raw === "__new__") {
+    const box = document.querySelector('#editForm [data-new-for="' + f.key + '"]');
+    const nv = box ? box.value.trim() : "";
+    if (!nv) throw new Error("Isi nilai baru untuk " + f.label + ".");
+    return nv;
+  }
+  return raw.trim();
 }
 
 async function saveForm() {
@@ -609,12 +759,12 @@ async function saveForm() {
   const mode = formState.mode;
   const row = formState.row;
   const oldValues = withoutRow(formState.original);
-  const newValues = readForm();
 
   setFormBusy(true);
   document.getElementById("editError").innerText = "";
 
   try {
+    const newValues = readForm();
     if (mode === "add") {
       await api("addRow", [sessionToken, sheetKey, newValues]);
       toast("Ditambahkan.");
@@ -648,6 +798,35 @@ async function deleteForm() {
   } catch (e) {
     formError(e);
   }
+}
+
+/* ---------- FORMAT & PARSE ---------- */
+
+const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** Format yang dipakai sheet: "5 Oct 2026". */
+function formatSheetDate(d) {
+  return d.getDate() + " " + MONTHS_EN[d.getMonth()] + " " + d.getFullYear();
+}
+
+/** Ubah "5 Oct 2026" jadi "2026-10-05" untuk date picker. Kosong kalau formatnya tidak dikenali. */
+function isoFromSheetDate(v) {
+  const m = String(v || "").trim().match(/^(\d{1,2}) ([A-Za-z]{3})[a-z]* (\d{4})$/);
+  if (!m) return "";
+  const mi = MONTHS_EN.findIndex(x => x.toLowerCase() === m[2].toLowerCase());
+  if (mi === -1) return "";
+  return m[3] + "-" + String(mi + 1).padStart(2, "0") + "-" + String(m[1]).padStart(2, "0");
+}
+
+/**
+ * Ambil ID file dari link Google Drive. Balikin null kalau tidak valid, "" kalau kosong.
+ * Menerima link /file/d/ID/view, link ?id=ID, atau ID saja.
+ */
+function extractDriveId(text) {
+  const t = String(text || "").trim();
+  if (!t) return "";
+  const m = t.match(/\/d\/([\w-]{20,})/) || t.match(/[?&]id=([\w-]{20,})/) || t.match(/^([\w-]{20,})$/);
+  return m ? m[1] : null;
 }
 
 function formError(e) {

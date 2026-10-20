@@ -4,6 +4,24 @@ Setiap update frontend menaikkan versi di `app.js` (`APP_VERSION`), `style.css?v
 
 Versi backend (`Code.gs`) dicatat terpisah di bawah.
 
+## 2.9.0
+- Form tambah dan edit tidak lagi pakai ketik bebas untuk isian yang bisa dipilih:
+  - Tanggal: date picker, formatnya otomatis seperti sheet (`5 Oct 2026`).
+  - Kategori, Departemen, Jabatan, Tipe, Penulis, Waktu baca, dan Bagian: dropdown dari nilai yang sudah ada di sheet, plus "+ Baru…".
+  - Alergen: checkbox.
+  - Harga: angka saja, otomatis pakai titik ribuan.
+  - Nomor WhatsApp: angka saja, default `62`.
+  - Foto dan file SOP: tempel link Google Drive, ID-nya diambil otomatis.
+  - Link materi dan video: harus diawali `https://`.
+  - Terakhir diupdate: diisi tanggal hari ini, tidak bisa diketik.
+- Nilai yang tidak dikenali (misalnya tanggal format lama) tidak diubah diam-diam.
+
+## 2.8.0
+- Dua mode akses, label di header: **Mode baca** (staff) dan **Mode edit** (non-staff).
+- Hak edit ditentukan backend saja (`canEdit` dari login dan checkSession). Frontend tidak lagi mengecek tier sendiri.
+- Editor melihat item nonaktif di Home (bulletin) dan Guests, diberi label "Nonaktif" dan tampil pudar. Staff hanya melihat item aktif.
+- Backend 2.6.0: kolom sheet dibaca lewat nama header. Urutan kolom di sheet boleh berubah.
+
 ## 2.7.1
 - Kontras teks dinaikkan: teks sekunder dan deskripsi sekarang Bone (80%), tidak lagi abu-abu gelap.
 
