@@ -3,6 +3,10 @@
 Each frontend update bumps `APP_VERSION` in `app.js` and the `?v=` values in `index.html`, and is recorded here.
 Backend (`Code.gs`) versions are listed separately at the bottom.
 
+## 2.21.0
+- Upsell shows items only. Lines and rules are removed.
+- The upsell sheet has the columns Date, Session, Shift, Item, Target, Unit.
+
 ## 2.20.0
 - All user-facing text is now in English (labels, buttons, messages, errors).
 - Upsell "Tipe" values changed: `Kalimat` is now `Line`, `Aturan` is now `Rule`. Update the existing cells in the `11_UpsellToday` sheet.

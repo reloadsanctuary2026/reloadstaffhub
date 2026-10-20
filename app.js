@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.20.0";
+const APP_VERSION = "2.21.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -27,7 +27,6 @@ const TABS = [
  *   src: true = pilihan diambil dari nilai yang sudah ada di sheet, plus "+ New…"
  */
 const STATUS_OPTIONS = ["ACTIVE", "INACTIVE"];
-const UPSELL_TIPE = ["Item", "Line", "Rule"];
 const SESI_ORDER = ["Morning", "Afternoon", "Evening"];
 const ALLERGEN_OPTIONS = ["Gluten", "Milk", "Egg", "Nut", "Seafood", "Soy"];
 const DIFFICULTY_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
@@ -45,10 +44,9 @@ const MENU_FIELDS = [
 const EDIT_FIELDS = {
   upsell: [
     { key: "date",     label: "Date", input: "date" },
-    { key: "tipe",     label: "Type", options: UPSELL_TIPE },
     { key: "sesi",     label: "Session", options: SESI_ORDER },
     { key: "shift",    label: "Shift (e.g. M6 & M8)", src: true },
-    { key: "item",     label: "Item / line / rule" },
+    { key: "item",     label: "Item" },
     { key: "target",   label: "Target", input: "number" },
     { key: "satuan",   label: "Unit (e.g. portion/server)", src: true }
   ],
@@ -401,27 +399,20 @@ function homeCol(title, sheetKey, body, extra) {
   return '<section class="home-col">' + sectionHead(title, sheetKey, extra) + body + '</section>';
 }
 
-/**
- * Upsell: item dikelompokkan per sesi, lalu kalimat, lalu aturan. Hanya baris ACTIVE.
- * Baris tanpa Tipe dianggap Item.
- */
+/** Upsell for today: items grouped by session. Only rows dated today are shown. */
 function upsellPanel() {
   const rows = appData.upsell.filter(r => isToday(r.date));
   if (!rows.length) return emptyState("No upsell for today.");
 
-  const isItem = r => !r.tipe || r.tipe === "Item";
-  const items = rows.filter(isItem);
-  const extraSesi = items.map(r => r.sesi)
+  const extra = rows.map(r => r.sesi)
     .filter((x, i, arr) => x && SESI_ORDER.indexOf(x) === -1 && arr.indexOf(x) === i);
-  const sesiList = SESI_ORDER.concat(extraSesi);
 
-  const sesiHtml = sesiList.map(sesi => {
-    const group = items.filter(r => r.sesi === sesi);
+  return SESI_ORDER.concat(extra).map(sesi => {
+    const group = rows.filter(r => r.sesi === sesi);
     if (!group.length) return "";
-    const shift = group[0].shift;
     return '<div class="card upsell-session">' +
       '<div class="row-between"><strong>' + esc(sesi) + '</strong>' +
-      (shift ? '<span class="badge">' + esc(shift) + '</span>' : '') + '</div>' +
+      (group[0].shift ? '<span class="badge">' + esc(group[0].shift) + '</span>' : '') + '</div>' +
       group.map(r =>
         '<div class="upsell-line"><span>' + esc(r.item) + '</span>' +
         '<span class="price">' + esc(r.target) + ' ' + esc(r.satuan) + '</span>' +
@@ -429,19 +420,6 @@ function upsellPanel() {
       ).join("") +
     '</div>';
   }).join("");
-
-  const kalimat = rows.filter(r => r.tipe === "Line");
-  const aturan = rows.filter(r => r.tipe === "Rule");
-
-  return sesiHtml +
-    (kalimat.length
-      ? '<div class="card"><div class="caption-label">Upsell lines</div><ul class="plain">' +
-        kalimat.map(r => '<li>' + esc(r.item) + editBtn("upsell", r) + '</li>').join("") + '</ul></div>'
-      : '') +
-    aturan.map(r =>
-      '<div class="card highlight"><div class="caption-label">Rule</div><strong>' + esc(r.item) + '</strong>' +
-      editBtn("upsell", r) + '</div>'
-    ).join("");
 }
 
 function bulletinCard(r) {
