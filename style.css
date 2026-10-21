@@ -683,3 +683,8 @@ ul.plain li:last-child { border-bottom: 0; }
 .bc-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--tag, var(--muted)); display: block; }
 .bc-day-title { font-weight: 700; margin: 16px 0 8px; }
 .bc-hint { margin-top: 14px; }
+
+/* Food dan Beverage: tampilan list */
+.menu-view { margin: 4px 0 12px; }
+.menu-row { align-items: center; }
+.menu-row .row-main span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }

@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.27.1";
+const APP_VERSION = "2.28.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -329,6 +329,9 @@ function endSession() {
   currentCanEdit = false;
   writeStore_("rsh_token", null);
   appData = null;
+  loadedKeys = {};
+  fetchingTab = {};
+  tabCategory = {};
   closeForm();
   showLogin();
 }
@@ -336,30 +339,73 @@ function endSession() {
 /** Sheets that may be missing from the backend response are treated as empty. */
 const DATA_KEYS = ["importantInfo", "upsell", "bulletin", "inspiration", "food", "beverage", "sop", "teams", "about", "guests", "academy"];
 
+/* Data dimuat per bagian. Home dimuat saat login. Tiap tab dimuat saat dibuka, lalu disimpan. */
+const HOME_DATA = ["guests", "bulletin", "upsell", "inspiration"];
+const TAB_DATA = { food: ["food"], beverage: ["beverage"], sop: ["sop"], academy: ["academy"], teams: ["teams"], about: ["about"] };
+const TAB_CATEGORY_FIELD = { food: "category", beverage: "category", sop: "category", academy: "category", teams: "department" };
+let loadedKeys = {};
+let fetchingTab = {};
+let tabCategory = {};   // kategori yang dipilih per tab, "" = semua
+let menuView = "grid";  // food dan beverage: grid (kartu) atau list (baris)
+
 function withDefaults(data) {
   const out = Object.assign({}, data);
   DATA_KEYS.forEach(k => { if (!Array.isArray(out[k])) out[k] = []; });
   return out;
 }
 
-let loadHintTimer = null;
+/** Saat login: data Home dimuat lewat renderTab, jadi di sini cukup reset. */
+function loadData() {
+  loadedKeys = {};
+  fetchingTab = {};
+  appData = withDefaults({});
+  renderTab();
+}
 
-async function loadData() {
-  renderTab();   // shows the skeleton right away while data is loading
-  clearTimeout(loadHintTimer);
-  loadHintTimer = setTimeout(function () {
+/** Memuat data yang dibutuhkan tab ini, hanya yang belum ada. Setelah selesai, halaman digambar ulang. */
+function ensureTab(tab) {
+  const keys = tab === "home" ? HOME_DATA : (TAB_DATA[tab] || []);
+  const missing = keys.filter(k => !loadedKeys[k]);
+  if (!missing.length || fetchingTab[tab]) return;
+  fetchingTab[tab] = true;
+  const hintTimer = setTimeout(function () {
     const hint = document.getElementById("loadHint");
     if (hint) hint.innerText = "Still loading. The first load after a while can take a few seconds.";
   }, 4000);
+  api("getData", [sessionToken, missing])
+    .then(function (data) {
+      fetchingTab[tab] = false;
+      clearTimeout(hintTimer);
+      if (!appData) return;   // sudah logout
+      missing.forEach(function (k) {
+        appData[k] = Array.isArray(data[k]) ? data[k] : [];
+        loadedKeys[k] = true;
+      });
+      if (activeTab === tab) renderTab();
+    })
+    .catch(function (e) {
+      fetchingTab[tab] = false;
+      clearTimeout(hintTimer);
+      handleApiError(e);
+      if (activeTab === tab) showLoadError(e.message);
+    });
+}
+
+function dataReady(tab) {
+  const keys = tab === "home" ? HOME_DATA : (TAB_DATA[tab] || []);
+  return keys.every(k => loadedKeys[k]);
+}
+
+/** Setelah simpan atau hapus: muat ulang hanya sheet itu. */
+async function refreshSheet(sheetKey) {
   try {
-    appData = withDefaults(await api("getAppData", [sessionToken]));
-    renderTab();
+    const data = await api("getData", [sessionToken, [sheetKey]]);
+    appData[sheetKey] = Array.isArray(data[sheetKey]) ? data[sheetKey] : [];
+    loadedKeys[sheetKey] = true;
   } catch (e) {
     handleApiError(e);
-    if (!appData) showLoadError(e.message);
-  } finally {
-    clearTimeout(loadHintTimer);
   }
+  renderTab();
 }
 
 function skeletonHtml() {
@@ -379,8 +425,8 @@ function showLoadError(message) {
 }
 
 function retryLoad() {
+  fetchingTab = {};
   renderTab();
-  loadData();
 }
 
 /** Sesi habis: pesan dari backend mengandung SESSION_EXPIRED. */
@@ -419,8 +465,9 @@ function showTab(key) {
 
 function renderTab() {
   const app = document.getElementById("app");
-  if (!appData) {
+  if (!appData || !dataReady(activeTab)) {
     app.innerHTML = skeletonHtml();
+    if (appData) ensureTab(activeTab);
     return;
   }
 
@@ -551,7 +598,43 @@ function viewSearchable(sheetKey) {
   return sectionHead(SHEET_LABELS[sheetKey], sheetKey) +
     '<input class="input search" type="search" placeholder="Search..." value="' + esc(searchText) +
     '" oninput="onSearch(this.value)">' +
+    categoryChips(sheetKey) +
+    (sheetKey === "food" || sheetKey === "beverage" ? menuViewToggle() : "") +
     '<div id="listArea">' + listHtml() + '</div>';
+}
+
+/** Chip All dan kategori dari data tab ini. */
+function categoryChips(tab) {
+  const field = TAB_CATEGORY_FIELD[tab];
+  if (!field) return "";
+  const cats = distinctValues(tab, field);
+  const cur = tabCategory[tab] || "";
+  const chip = (i, label, on) =>
+    '<button type="button" class="chip-btn' + (on ? ' on' : '') + '" onclick="setTabCategory(' + i + ')">' + esc(label) + '</button>';
+  return '<div class="gl-chips">' + chip(-1, "All", cur === "") + cats.map((c, i) => chip(i, c, cur === c)).join("") + '</div>';
+}
+
+function setTabCategory(i) {
+  const cats = distinctValues(activeTab, TAB_CATEGORY_FIELD[activeTab]);
+  tabCategory[activeTab] = i < 0 ? "" : cats[i];
+  renderTab();
+}
+
+function inTabCategory(tab, r) {
+  const cur = tabCategory[tab] || "";
+  return !cur || r[TAB_CATEGORY_FIELD[tab]] === cur;
+}
+
+function menuViewToggle() {
+  return '<div class="seg menu-view" role="group" aria-label="View">' +
+    [["grid", "Cards"], ["list", "List"]].map(o =>
+      '<button type="button" class="' + (menuView === o[0] ? "on" : "") + '" onclick="setMenuView(\'' + o[0] + '\')">' + o[1] + '</button>'
+    ).join("") + '</div>';
+}
+
+function setMenuView(mode) {
+  menuView = mode;
+  renderTab();
 }
 
 function onSearch(value) {
@@ -579,10 +662,22 @@ function grouped(items, field, renderBody) {
 }
 
 function menuList(rows, sheetKey) {
-  const items = rows.filter(r => r.name && matches([r.category, r.name, r.description]));
+  const items = rows.filter(r => r.name && inTabCategory(sheetKey, r) && matches([r.category, r.name, r.description]));
   if (!items.length) return emptyState("No matching menu items.");
+  if (menuView === "list") {
+    return grouped(items, "category", list => list.map(r => menuRow(r, sheetKey)).join(""));
+  }
   return grouped(items, "category", list =>
     '<div class="grid">' + list.map(r => menuCard(r, sheetKey)).join("") + '</div>');
+}
+
+function menuRow(r, sheetKey) {
+  return '<div class="row menu-row">' +
+    '<div class="row-main"><strong>' + esc(r.name) + '</strong>' +
+      '<span class="small muted">' + esc(r.description) + '</span></div>' +
+    '<span class="price">Rp ' + esc(r.price) + '</span>' +
+    editBtn(sheetKey, r) +
+  '</div>';
 }
 
 function menuCard(r, sheetKey) {
@@ -601,7 +696,7 @@ function menuCard(r, sheetKey) {
 }
 
 function sopList() {
-  const items = appData.sop.filter(r => r.name && r.file && matches([r.category, r.name, r.description]));
+  const items = appData.sop.filter(r => r.name && r.file && inTabCategory("sop", r) && matches([r.category, r.name, r.description]));
   if (!items.length) return emptyState("No matching SOPs.");
   return grouped(items, "category", list => list.map(sopRow).join(""));
 }
@@ -619,7 +714,7 @@ function sopRow(r) {
 }
 
 function academyList() {
-  const items = appData.academy.filter(r => r.title && matches([r.category, r.title, r.shortDesc]));
+  const items = appData.academy.filter(r => r.title && inTabCategory("academy", r) && matches([r.category, r.title, r.shortDesc]));
   if (!items.length) return emptyState("No matching materials.");
   return grouped(items, "category", list =>
     '<div class="grid two">' + list.map(academyCard).join("") + '</div>');
@@ -649,8 +744,9 @@ function academyCard(r) {
 /* ---------- TEAMS / GUESTS / ABOUT ---------- */
 
 function viewTeams() {
-  const rows = appData.teams.filter(r => r.name);
+  const rows = appData.teams.filter(r => r.name && inTabCategory("teams", r));
   return sectionHead(SHEET_LABELS.teams, "teams") +
+    categoryChips("teams") +
     (rows.length
       ? grouped(rows, "department", list => '<div class="grid">' + list.map(personCard).join("") + '</div>')
       : emptyState("No team data yet."));
@@ -1346,7 +1442,7 @@ async function saveForm() {
       toast(res.changed ? "Saved." : "No changes.");
     }
     closeForm();
-    loadData();
+    refreshSheet(sheetKey);
   } catch (e) {
     formError(e);
   }
@@ -1367,7 +1463,7 @@ async function deleteForm() {
     await api("deleteRow", [sessionToken, sheetKey, row, oldValues]);
     toast("Deleted.");
     closeForm();
-    loadData();
+    refreshSheet(sheetKey);
   } catch (e) {
     formError(e);
   }
