@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.29.0";
+const APP_VERSION = "2.29.1";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -352,6 +352,8 @@ let refreshing = {};
 const STALE_MS = 60000;   // data lebih tua dari ini dicek ulang diam-diam
 const PREFETCH_ORDER = ["food", "beverage", "sop", "teams", "academy", "about"];
 const PREFETCH_DELAY_MS = 1500;
+const PREFETCH_SLOW_MS = 6000;    // permintaan lebih lama dari ini dianggap lambat (cold start bisa sampai beberapa detik)
+const PREFETCH_SLOW_LIMIT = 2;    // dua permintaan lambat berturut-turut: prefetch berhenti sampai login berikutnya
 let tabCategory = {};   // kategori yang dipilih per tab, "" = semua
 let menuView = "grid";  // food dan beverage: grid (kartu) atau list (baris)
 
@@ -410,10 +412,12 @@ function markLoaded(keys) {
 
 /** Muat di latar belakang, satu per satu, supaya tab lain sudah siap saat dibuka. Tidak menampilkan apa-apa. */
 async function prefetchTabs() {
+  let slowInARow = 0;
   for (const tab of PREFETCH_ORDER) {
     if (!appData) return;   // sudah logout
     const keys = (TAB_DATA[tab] || []).filter(k => !loadedKeys[k]);
     if (!keys.length) continue;
+    const started = Date.now();
     try {
       const data = await api("getData", [sessionToken, keys]);
       if (!appData) return;
@@ -424,6 +428,8 @@ async function prefetchTabs() {
     } catch (e) {
       return;   // gagal diam-diam, tab akan memuat sendiri saat dibuka
     }
+    slowInARow = Date.now() - started > PREFETCH_SLOW_MS ? slowInARow + 1 : 0;
+    if (slowInARow >= PREFETCH_SLOW_LIMIT) return;   // server sedang berat, berhenti dulu
   }
 }
 
