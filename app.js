@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.28.0";
+const APP_VERSION = "2.28.1";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -595,11 +595,11 @@ function dayPart() {
 /* ---------- MENU / SOP / ACADEMY (ada pencarian) ---------- */
 
 function viewSearchable(sheetKey) {
-  return sectionHead(SHEET_LABELS[sheetKey], sheetKey) +
+  const isMenu = sheetKey === "food" || sheetKey === "beverage";
+  return sectionHead(SHEET_LABELS[sheetKey], sheetKey, isMenu ? menuViewToggle() : "") +
     '<input class="input search" type="search" placeholder="Search..." value="' + esc(searchText) +
     '" oninput="onSearch(this.value)">' +
     categoryChips(sheetKey) +
-    (sheetKey === "food" || sheetKey === "beverage" ? menuViewToggle() : "") +
     '<div id="listArea">' + listHtml() + '</div>';
 }
 
@@ -1221,7 +1221,7 @@ function statusBadge(rec) {
 
 function sectionHead(title, sheetKey, extra) {
   return '<div class="section-head"><h2 class="section-title">' + esc(title) + '</h2>' +
-    (extra || "") + addBtn(sheetKey, "+ Add") + '</div>';
+    '<div class="section-actions">' + (extra || "") + addBtn(sheetKey, "+ Add") + '</div></div>';
 }
 
 function addBtn(sheetKey, label) {
