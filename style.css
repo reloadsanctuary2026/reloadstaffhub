@@ -709,3 +709,19 @@ ul.plain li:last-child { border-bottom: 0; }
 .more-m { display: none; }
 .more-s { display: inline-block; }
 .guest-card-actions, .bl-actions { align-items: center; }
+
+/* Foto dan popup info */
+.clickable { cursor: pointer; }
+.photo-btn { display: block; width: 100%; padding: 0; margin: 0; border: 0; background: none; cursor: zoom-in; border-radius: inherit; }
+.guest-card-head .photo-btn { width: auto; flex: 0 0 52px; }
+.guest-tile .photo-btn, .guest-line .photo-btn { border-radius: 0; }
+.guest-line .photo-btn { width: 52px; flex: 0 0 52px; }
+.photo-modal { background: rgba(0, 0, 0, 0.92); }
+.photo-modal img { max-width: 100%; max-height: 86vh; object-fit: contain; border-radius: 12px; }
+.photo-close { position: absolute; top: 14px; right: 14px; }
+.detail-hero { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 16px; margin-bottom: 14px; display: block; }
+.detail-name { display: block; font-size: 18px; margin-bottom: 8px; }
+.detail-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+.detail-text { margin: 12px 0 0; }
+.detail-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.bl-photo { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; margin-bottom: 8px; display: block; }

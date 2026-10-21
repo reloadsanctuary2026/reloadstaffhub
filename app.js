@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.29.1";
+const APP_VERSION = "2.30.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -229,6 +229,11 @@ window.addEventListener("load", async function () {
   document.getElementById("logoutBtn").addEventListener("click", doLogout);
   document.getElementById("editClose").addEventListener("click", closeForm);
   document.getElementById("guestClose").addEventListener("click", closeGuest);
+  document.getElementById("detailClose").addEventListener("click", closeDetail);
+  document.getElementById("detailModal").addEventListener("click", function (e) {
+    if (e.target.id === "detailModal") closeDetail();
+  });
+  document.getElementById("photoModal").addEventListener("click", closePhoto);
   document.getElementById("guestModal").addEventListener("click", function (e) {
     if (e.target.id === "guestModal") closeGuest();
   });
@@ -641,13 +646,13 @@ function upsellPanel() {
 }
 
 function bulletinCard(r) {
-  return '<div class="note' + inactiveClass(r) + '"><div class="note-body">' +
+  return '<div class="note clickable' + inactiveClass(r) + '" onclick="openDetail(\'bulletin\',' + r._row + ')"><div class="note-body">' +
+    (r.image ? photoBtn(r.image, '<img class="bl-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">') : '') +
     '<div class="small muted">' + esc(r.date) + (r.type ? ' · ' + esc(r.type) : '') + statusBadge(r) + '</div>' +
     '<div class="note-title">' + esc(r.title) + '</div>' +
     '<p class="pre muted">' + esc(r.description) + '</p>' +
     editBtn("bulletin", r) + '</div></div>';
 }
-
 /** Bagian hari: kunci untuk kutipan harian dan kata sapaan. */
 function dayPart() {
   const h = new Date().getHours();
@@ -737,18 +742,17 @@ function menuList(rows, sheetKey) {
 }
 
 function menuRow(r, sheetKey) {
-  return '<div class="row menu-row">' +
+  return '<div class="row menu-row clickable" onclick="openDetail(\'' + sheetKey + '\',' + r._row + ')">' +
     '<div class="row-main"><strong>' + esc(r.name) + '</strong>' +
       '<span class="small muted">' + esc(r.description) + '</span></div>' +
     '<span class="price">Rp ' + esc(r.price) + '</span>' +
     editBtn(sheetKey, r) +
   '</div>';
 }
-
 function menuCard(r, sheetKey) {
-  return '<article class="tile">' +
+  return '<article class="tile clickable" onclick="openDetail(\'' + sheetKey + '\',' + r._row + ')">' +
     (r.image
-      ? '<img class="tile-img" src="' + imgUrl(r.image) + '" alt="" loading="lazy">'
+      ? photoBtn(r.image, '<img class="tile-img" src="' + imgUrl(r.image) + '" alt="" loading="lazy">')
       : '<div class="tile-img placeholder">' + esc(initial(r.name)) + '</div>') +
     '<div class="tile-body">' +
       '<div class="tile-head"><h3>' + esc(r.name) + '</h3>' +
@@ -759,7 +763,6 @@ function menuCard(r, sheetKey) {
     '</div>' +
   '</article>';
 }
-
 function sopList() {
   const items = appData.sop.filter(r => r.name && r.file && inTabCategory("sop", r) && matches([r.category, r.name, r.description]));
   if (!items.length) return emptyState("No matching SOPs.");
@@ -786,7 +789,7 @@ function academyList() {
 }
 
 function academyCard(r) {
-  return '<article class="card">' +
+  return '<article class="card clickable" onclick="openDetail(\'academy\',' + r._row + ')">' +
     '<div class="row-between">' +
       '<h3>' + esc(r.title) + '</h3>' +
       (r.knowledge === "YES" ? '<span class="badge">Knowledge of the Week</span>' : '') +
@@ -799,13 +802,12 @@ function academyCard(r) {
     '</div>' +
     (r.content ? '<p class="pre muted small">' + esc(r.content) + '</p>' : '') +
     '<div class="actions">' +
-      (r.video ? '<a class="btn small" target="_blank" rel="noopener" href="' + esc(r.video) + '">Watch video</a>' : '') +
-      (r.fullLink ? '<a class="btn small outline" target="_blank" rel="noopener" href="' + esc(r.fullLink) + '">Read material</a>' : '') +
+      (r.video ? '<a class="btn small" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="' + esc(r.video) + '">Watch video</a>' : '') +
+      (r.fullLink ? '<a class="btn small outline" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="' + esc(r.fullLink) + '">Read material</a>' : '') +
     '</div>' +
     editBtn("academy", r) +
   '</article>';
 }
-
 /* ---------- TEAMS / GUESTS / ABOUT ---------- */
 
 function viewTeams() {
@@ -818,19 +820,18 @@ function viewTeams() {
 }
 
 function personCard(r) {
-  return '<div class="person">' +
+  return '<div class="person clickable" onclick="openDetail(\'teams\',' + r._row + ')">' +
     (r.image
-      ? '<img class="person-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">'
+      ? photoBtn(r.image, '<img class="person-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">')
       : '<div class="person-photo initials">' + esc(initials(r.name)) + '</div>') +
     '<div class="person-name">' + esc(r.name) + '</div>' +
     '<div class="muted">' + esc(r.position) + '</div>' +
     (r.phone
-      ? '<a class="pill" target="_blank" rel="noopener" href="https://wa.me/' + esc(r.phone.replace(/\D/g, "")) + '">WhatsApp</a>'
+      ? '<a class="pill" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="https://wa.me/' + esc(r.phone.replace(/\D/g, "")) + '">WhatsApp</a>'
       : '') +
     editBtn("teams", r) +
   '</div>';
 }
-
 /** Sapaan: nickname dari HR, kalau kosong pakai nama depan. */
 function greetingName() {
   return currentNickname || firstName(currentName);
@@ -882,7 +883,7 @@ function guestCard(r) {
   return '<div class="note guest' + inactiveClass(r) + '">' +
     '<div class="guest-card-head">' +
       (r.image
-        ? '<img class="guest-card-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">'
+        ? photoBtn(r.image, '<img class="guest-card-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">')
         : '<div class="guest-card-photo gph">' + esc(initial(r.guest)) + '</div>') +
       '<div class="guest-card-main">' +
         '<strong>' + esc(r.guest) + '</strong>' +
@@ -905,7 +906,6 @@ function guestCard(r) {
     '</div>' +
   '</div>';
 }
-
 /** Buka atau tutup teks catatan di dalam kartu. */
 function toggleGuestText(btn) {
   const card = btn.closest(".guest");
@@ -918,7 +918,7 @@ function openGuest(row) {
   const r = (appData.guests || []).find(x => x._row === row);
   if (!r) return toast("This data no longer exists. Refresh first.");
   document.getElementById("guestBody").innerHTML =
-    (r.image ? '<img class="guest-hero" src="' + imgUrl(r.image) + '" alt="' + esc(r.guest) + '">' : '') +
+    (r.image ? photoBtn(r.image, '<img class="guest-hero" src="' + imgUrl(r.image) + '" alt="' + esc(r.guest) + '">') : '') +
     '<div class="row-between"><strong class="guest-name">' + esc(r.guest) + '</strong>' +
       '<span class="badge">' + esc(r.category) + '</span></div>' +
     '<div class="small muted">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</div>' +
@@ -926,7 +926,6 @@ function openGuest(row) {
     editBtn("guests", r);
   document.getElementById("guestModal").classList.remove("hidden");
 }
-
 function closeGuest() {
   const modal = document.getElementById("guestModal");
   if (modal) modal.classList.add("hidden");
@@ -1028,24 +1027,22 @@ function guestPhoto(r, cls) {
 }
 
 function guestTile(r) {
-  return '<button class="guest-tile' + inactiveClass(r) + '" type="button" onclick="openGuest(' + r._row + ')">' +
-    guestPhoto(r, "guest-tile-img") +
+  return '<div class="guest-tile' + inactiveClass(r) + '" role="button" tabindex="0" onclick="openGuest(' + r._row + ')">' +
+    guestPhotoHtml(r, "guest-tile-img") +
     '<div class="guest-tile-body"><strong>' + esc(r.guest) + '</strong>' +
       '<span class="badge">' + esc(r.category) + '</span>' + statusBadge(r) +
       '<span class="small muted">' + esc(r.date) + '</span></div>' +
-  '</button>';
+  '</div>';
 }
-
 function guestLine(r) {
-  return '<button class="guest-line' + inactiveClass(r) + '" type="button" onclick="openGuest(' + r._row + ')">' +
-    guestPhoto(r, "guest-line-img") +
+  return '<div class="guest-line' + inactiveClass(r) + '" role="button" tabindex="0" onclick="openGuest(' + r._row + ')">' +
+    guestPhotoHtml(r, "guest-line-img") +
     '<span class="guest-line-body"><strong>' + esc(r.guest) + '</strong>' +
       '<span class="small muted">' + esc(r.category) + ' · ' + esc(r.date) + '</span></span>' +
     statusBadge(r) +
     '<span class="chev">›</span>' +
-  '</button>';
+  '</div>';
 }
-
 function guestSearch(value) {
   guestFilter.q = value;
   guestFilter.shown = GUESTS_PAGE_SIZE;
@@ -1201,7 +1198,8 @@ function bulletinItem(r) {
   const text = String(r.description || "");
   const more = text.length > 80;
   const color = bulletinColor(r.type);
-  return '<div class="bl-item ' + color + '">' +
+  return '<div class="bl-item clickable ' + color + '" onclick="openDetail(\'bulletin\',' + r._row + ')">' +
+    (r.image ? photoBtn(r.image, '<img class="bl-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">') : '') +
     '<div class="bl-meta"><span class="bl-tag ' + color + '">' + esc(r.type || "Info") + '</span>' +
       '<span class="small muted">' + esc(r.date) + '</span></div>' +
     '<div class="note-title">' + esc(r.title) + '</div>' +
@@ -1209,16 +1207,75 @@ function bulletinItem(r) {
       ? '<p class="bl-text"><span class="bl-short">' + esc(clipText(text, 80)) + '</span><span class="bl-full">' + esc(text) + '</span></p>'
       : '') +
     '<div class="bl-actions">' +
-      (more ? '<button class="more" type="button" onclick="toggleBulletinText(this)">Read more</button>' : '') +
+      (more ? '<button class="more" type="button" onclick="event.stopPropagation();toggleBulletinText(this)">Read more</button>' : '') +
       editBtn("bulletin", r) +
     '</div>' +
   '</div>';
 }
-
 function toggleBulletinText(btn) {
   const item = btn.closest(".bl-item");
   const open = item.classList.toggle("open");
   btn.innerText = open ? "Show less" : "Read more";
+}
+
+/* ---------- FOTO & DETAIL ---------- */
+
+function imgUrlLarge(id) {
+  if (/^https?:\/\//.test(id)) return id;
+  return "https://drive.google.com/thumbnail?id=" + encodeURIComponent(id) + "&sz=w1600";
+}
+
+/** Foto yang bisa diperbesar. Klik foto tidak ikut membuka kartu di belakangnya. */
+function photoBtn(id, imgHtml) {
+  return '<button class="photo-btn" type="button" data-photo="' + esc(id) + '" onclick="event.stopPropagation();openPhoto(this.dataset.photo)">' + imgHtml + '</button>';
+}
+
+function guestPhotoHtml(r, cls) {
+  return r.image
+    ? photoBtn(r.image, '<img class="' + cls + '" src="' + imgUrl(r.image) + '" alt="" loading="lazy">')
+    : '<div class="' + cls + ' gph">' + esc(initial(r.guest)) + '</div>';
+}
+
+function openPhoto(id) {
+  document.getElementById("photoFull").src = imgUrlLarge(id);
+  document.getElementById("photoModal").classList.remove("hidden");
+}
+
+function closePhoto() {
+  document.getElementById("photoModal").classList.add("hidden");
+}
+
+/* Isi popup info per sheet. meta: [label, kolom, awalan]. */
+const DETAIL_CONFIG = {
+  food:     { label: "Food Bible", title: "name", meta: [["Category", "category"], ["Price", "price", "Rp "], ["Allergens", "allergens"]], text: "description", links: [] },
+  beverage: { label: "Beverage Bible", title: "name", meta: [["Category", "category"], ["Price", "price", "Rp "], ["Allergens", "allergens"]], text: "description", links: [] },
+  teams:    { label: "Our Teams", title: "name", meta: [["Department", "department"], ["Position", "position"], ["Phone", "phone"]], text: null, links: [] },
+  academy:  { label: "Reload Academy", title: "title", meta: [["Category", "category"], ["Difficulty", "difficulty"], ["Reading time", "readingTime"], ["Updated", "updated"], ["Summary", "shortDesc"]], text: "content", links: [["Read material", "fullLink"], ["Watch video", "video"]] },
+  bulletin: { label: "Staff Bulletin", title: "title", meta: [["Date", "date"], ["Type", "type"]], text: "description", links: [] }
+};
+
+function openDetail(sheetKey, row) {
+  const cfg = DETAIL_CONFIG[sheetKey];
+  const r = (appData[sheetKey] || []).find(x => x._row === row);
+  if (!cfg || !r) return toast("This data no longer exists. Refresh first.");
+  const metaRow = m => r[m[1]]
+    ? '<div class="detail-row"><span class="muted">' + esc(m[0]) + '</span><span>' + esc((m[2] || "") + r[m[1]]) + '</span></div>'
+    : "";
+  const links = cfg.links.filter(l => r[l[1]]).map(l =>
+    '<a class="btn small outline" target="_blank" rel="noopener" href="' + esc(r[l[1]]) + '">' + esc(l[0]) + '</a>').join("");
+  document.getElementById("detailTitle").innerText = cfg.label;
+  document.getElementById("detailBody").innerHTML =
+    (r.image ? photoBtn(r.image, '<img class="detail-hero" src="' + imgUrl(r.image) + '" alt="">') : "") +
+    '<strong class="detail-name">' + esc(r[cfg.title]) + '</strong>' +
+    cfg.meta.map(metaRow).join("") +
+    (cfg.text && r[cfg.text] ? '<p class="pre detail-text">' + esc(r[cfg.text]) + '</p>' : "") +
+    (links ? '<div class="detail-links">' + links + '</div>' : "") +
+    editBtn(sheetKey, r);
+  document.getElementById("detailModal").classList.remove("hidden");
+}
+
+function closeDetail() {
+  document.getElementById("detailModal").classList.add("hidden");
 }
 
 function viewAbout() {
@@ -1296,9 +1353,8 @@ function addBtn(sheetKey, label) {
 
 function editBtn(sheetKey, rec) {
   if (!canEdit() || !rec || !rec._row) return "";
-  return '<button class="edit-btn" type="button" onclick="openEdit(\'' + sheetKey + '\',' + rec._row + ')">Edit</button>';
+  return '<button class="edit-btn" type="button" onclick="event.stopPropagation();closeDetail();openEdit(\'' + sheetKey + '\',' + rec._row + ')">Edit</button>';
 }
-
 /* ---------- FORM (tambah, edit, hapus) ---------- */
 
 function openAdd(sheetKey) {
