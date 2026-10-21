@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.27.0";
+const APP_VERSION = "2.27.1";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -145,7 +145,7 @@ let bulletinLanding = false;
 let bulletinView = "list";
 let bulletinMonth = null;   // { y, m } bulan yang sedang dilihat di kalender
 let bulletinDay = null;     // "YYYY-MM-DD" hari yang dipilih di kalender
-let bulletinShown = GUESTS_PAGE_SIZE;
+let bulletinShown = 0;   // diisi saat halaman Staff Bulletin dibuka
 const GUESTS_PAGE_SIZE = 12;
 let guestFilter = { q: "", cat: -1, sort: "newest", view: "grid", status: "all", shown: GUESTS_PAGE_SIZE };
 let formState = null;   // { mode: "add" | "edit", sheetKey, row, original }
