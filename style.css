@@ -725,3 +725,5 @@ ul.plain li:last-child { border-bottom: 0; }
 .detail-text { margin: 12px 0 0; }
 .detail-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .bl-photo { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; margin-bottom: 8px; display: block; }
+.detail-head-actions { display: flex; align-items: center; gap: 8px; }
+.detail-head-actions .edit-btn { margin: 0; }

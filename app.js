@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.30.0";
+const APP_VERSION = "2.30.1";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -826,9 +826,6 @@ function personCard(r) {
       : '<div class="person-photo initials">' + esc(initials(r.name)) + '</div>') +
     '<div class="person-name">' + esc(r.name) + '</div>' +
     '<div class="muted">' + esc(r.position) + '</div>' +
-    (r.phone
-      ? '<a class="pill" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="https://wa.me/' + esc(r.phone.replace(/\D/g, "")) + '">WhatsApp</a>'
-      : '') +
     editBtn("teams", r) +
   '</div>';
 }
@@ -1263,14 +1260,17 @@ function openDetail(sheetKey, row) {
     : "";
   const links = cfg.links.filter(l => r[l[1]]).map(l =>
     '<a class="btn small outline" target="_blank" rel="noopener" href="' + esc(r[l[1]]) + '">' + esc(l[0]) + '</a>').join("");
+  const wa = sheetKey === "teams" && r.phone
+    ? '<a class="btn small" target="_blank" rel="noopener" href="https://wa.me/' + esc(String(r.phone).replace(/\D/g, "")) + '">WhatsApp</a>'
+    : "";
   document.getElementById("detailTitle").innerText = cfg.label;
+  document.getElementById("detailEdit").innerHTML = editBtn(sheetKey, r);
   document.getElementById("detailBody").innerHTML =
     (r.image ? photoBtn(r.image, '<img class="detail-hero" src="' + imgUrl(r.image) + '" alt="">') : "") +
     '<strong class="detail-name">' + esc(r[cfg.title]) + '</strong>' +
     cfg.meta.map(metaRow).join("") +
     (cfg.text && r[cfg.text] ? '<p class="pre detail-text">' + esc(r[cfg.text]) + '</p>' : "") +
-    (links ? '<div class="detail-links">' + links + '</div>' : "") +
-    editBtn(sheetKey, r);
+    ((links || wa) ? '<div class="detail-links">' + wa + links + '</div>' : "");
   document.getElementById("detailModal").classList.remove("hidden");
 }
 
