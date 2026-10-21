@@ -725,5 +725,17 @@ ul.plain li:last-child { border-bottom: 0; }
 .detail-text { margin: 12px 0 0; }
 .detail-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .bl-photo { width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 12px; margin-bottom: 8px; display: block; }
-.detail-head-actions { display: flex; align-items: center; gap: 8px; }
-.detail-head-actions .edit-btn { margin: 0; }
+
+/* Tombol Edit di pojok kanan atas kartu */
+.person, .tile, .card { position: relative; }
+.corner-edit {
+  position: absolute; top: 10px; right: 10px; z-index: 2;
+  height: 30px; min-height: 30px; padding: 0 12px; margin: 0;
+  font-size: 12px; background: rgba(3, 3, 3, 0.75); backdrop-filter: blur(4px);
+}
+
+/* Kalender: tambah dari tanggal, dan jarak header popup */
+.modal-head { margin-bottom: 16px; }
+.bc-day-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 16px 0 8px; }
+.bc-day-head .bc-day-title { margin: 0; }
+.bc-day-head .add-btn { height: 36px; }

@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.30.1";
+const APP_VERSION = "2.31.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -651,7 +651,7 @@ function bulletinCard(r) {
     '<div class="small muted">' + esc(r.date) + (r.type ? ' · ' + esc(r.type) : '') + statusBadge(r) + '</div>' +
     '<div class="note-title">' + esc(r.title) + '</div>' +
     '<p class="pre muted">' + esc(r.description) + '</p>' +
-    editBtn("bulletin", r) + '</div></div>';
+    editBtn("bulletin", r, true) + '</div></div>';
 }
 /** Bagian hari: kunci untuk kutipan harian dan kata sapaan. */
 function dayPart() {
@@ -759,7 +759,7 @@ function menuCard(r, sheetKey) {
       '<span class="price">Rp ' + esc(r.price) + '</span></div>' +
       '<p class="muted small pre">' + esc(r.description) + '</p>' +
       (r.allergens ? '<span class="allergen">Allergen: ' + esc(r.allergens) + '</span>' : '') +
-      editBtn(sheetKey, r) +
+      editBtn(sheetKey, r, true) +
     '</div>' +
   '</article>';
 }
@@ -805,7 +805,7 @@ function academyCard(r) {
       (r.video ? '<a class="btn small" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="' + esc(r.video) + '">Watch video</a>' : '') +
       (r.fullLink ? '<a class="btn small outline" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="' + esc(r.fullLink) + '">Read material</a>' : '') +
     '</div>' +
-    editBtn("academy", r) +
+    editBtn("academy", r, true) +
   '</article>';
 }
 /* ---------- TEAMS / GUESTS / ABOUT ---------- */
@@ -826,7 +826,7 @@ function personCard(r) {
       : '<div class="person-photo initials">' + esc(initials(r.name)) + '</div>') +
     '<div class="person-name">' + esc(r.name) + '</div>' +
     '<div class="muted">' + esc(r.position) + '</div>' +
-    editBtn("teams", r) +
+    editBtn("teams", r, true) +
   '</div>';
 }
 /** Sapaan: nickname dari HR, kalau kosong pakai nama depan. */
@@ -1144,11 +1144,16 @@ function bulletinCalendarHtml() {
     const dots = Array.from(new Set(list.map(r => bulletinColor(r.type))))
       .map(c => '<i class="bc-dot ' + c + '"></i>').join("");
     const classes = "bc-cell" + (iso === todayIso ? " bc-today" : "") + (iso === bulletinDay ? " bc-picked" : "");
-    cells.push('<button type="button" class="' + classes + '"' + (list.length ? ' onclick="bulletinPick(\'' + iso + '\')"' : ' disabled') + '>' +
+    cells.push('<button type="button" class="' + classes + '" onclick="bulletinPick(\'' + iso + '\')">' +
       '<span>' + d + '</span><span class="bc-dots">' + dots + '</span></button>');
   }
 
   const dayItems = bulletinDay ? (byDay[bulletinDay] || []) : [];
+  const dayHead = bulletinDay
+    ? '<div class="bc-day-head"><div class="bc-day-title">' + esc(formatSheetDate(new Date(bulletinDay + "T00:00:00"))) + '</div>' +
+      (canEdit() ? '<button class="add-btn" type="button" onclick="openAdd(\'bulletin\',\'' + bulletinDay + '\')">+ Add on this day</button>' : '') +
+      '</div>'
+    : "";
   return '<div class="bc-head">' +
       '<button class="ghost small" type="button" aria-label="Previous month" onclick="bulletinMonthStep(-1)">‹</button>' +
       '<strong>' + BULLETIN_MONTHS[m] + ' ' + y + '</strong>' +
@@ -1157,9 +1162,8 @@ function bulletinCalendarHtml() {
     '<div class="bc-week">' + BULLETIN_WEEKDAYS.map(w => '<span>' + w + '</span>').join("") + '</div>' +
     '<div class="bc-grid">' + cells.join("") + '</div>' +
     (bulletinDay
-      ? '<div class="bc-day-title">' + esc(formatSheetDate(new Date(bulletinDay + "T00:00:00"))) + '</div>' +
-        (dayItems.length ? dayItems.map(bulletinItem).join("") : emptyState("Nothing on this day."))
-      : '<p class="muted small bc-hint">Tap a date with a dot to see its items.</p>');
+      ? dayHead + (dayItems.length ? dayItems.map(bulletinItem).join("") : emptyState("Nothing on this day yet."))
+      : '<p class="muted small bc-hint">Tap a date to see its items or add one.</p>');
 }
 
 function bulletinMonthStep(delta) {
@@ -1264,7 +1268,6 @@ function openDetail(sheetKey, row) {
     ? '<a class="btn small" target="_blank" rel="noopener" href="https://wa.me/' + esc(String(r.phone).replace(/\D/g, "")) + '">WhatsApp</a>'
     : "";
   document.getElementById("detailTitle").innerText = cfg.label;
-  document.getElementById("detailEdit").innerHTML = editBtn(sheetKey, r);
   document.getElementById("detailBody").innerHTML =
     (r.image ? photoBtn(r.image, '<img class="detail-hero" src="' + imgUrl(r.image) + '" alt="">') : "") +
     '<strong class="detail-name">' + esc(r[cfg.title]) + '</strong>' +
@@ -1351,15 +1354,18 @@ function addBtn(sheetKey, label) {
   return '<button class="add-btn" type="button" onclick="openAdd(\'' + sheetKey + '\')">' + esc(label) + '</button>';
 }
 
-function editBtn(sheetKey, rec) {
+function editBtn(sheetKey, rec, corner) {
   if (!canEdit() || !rec || !rec._row) return "";
-  return '<button class="edit-btn" type="button" onclick="event.stopPropagation();closeDetail();openEdit(\'' + sheetKey + '\',' + rec._row + ')">Edit</button>';
-}
-/* ---------- FORM (tambah, edit, hapus) ---------- */
+  return '<button class="edit-btn' + (corner ? ' corner-edit' : '') + '" type="button" onclick="event.stopPropagation();closeDetail();openEdit(\'' + sheetKey + '\',' + rec._row + ')">Edit</button>';
+}/* ---------- FORM (tambah, edit, hapus) ---------- */
 
-function openAdd(sheetKey) {
+function openAdd(sheetKey, presetDate) {
   const blank = {};
   EDIT_FIELDS[sheetKey].forEach(f => { blank[f.key] = defaultValue(sheetKey, f); });
+  if (presetDate) {
+    const dateField = EDIT_FIELDS[sheetKey].find(f => f.input === "date");
+    if (dateField) blank[dateField.key] = formatSheetDate(new Date(presetDate + "T00:00:00"));
+  }
   formState = { mode: "add", sheetKey: sheetKey, row: null, original: blank };
   showForm("Add " + SHEET_LABELS[sheetKey], blank, false);
 }
