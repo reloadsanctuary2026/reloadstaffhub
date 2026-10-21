@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.28.1";
+const APP_VERSION = "2.28.4";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -221,7 +221,7 @@ function writeStore_(key, value) {
 /* ---------- START ---------- */
 
 window.addEventListener("load", async function () {
-  document.getElementById("appVersion").innerText = APP_VERSION;
+  document.querySelectorAll(".app-version").forEach(function (el) { el.innerText = APP_VERSION; });
   document.getElementById("loginBtn").addEventListener("click", doLogin);
   document.getElementById("loginPin").addEventListener("keydown", function (e) {
     if (e.key === "Enter") doLogin();
@@ -1043,17 +1043,17 @@ function viewBulletinLanding() {
   return '<div class="gl-head">' +
       '<button class="ghost" type="button" onclick="showTab(\'home\')">← Back</button>' +
       '<h2 class="section-title">Staff Bulletin</h2>' +
-      addBtn("bulletin", "+ Add") +
+      '<div class="section-actions">' +
+        '<div class="seg" role="group" aria-label="View">' +
+          [["calendar", "Calendar"], ["list", "List"]].map(o =>
+            '<button type="button" class="' + (bulletinView === o[0] ? "on" : "") + '" onclick="bulletinSetView(\'' + o[0] + '\')">' + o[1] + '</button>'
+          ).join("") +
+        '</div>' +
+        addBtn("bulletin", "+ Add") +
+      '</div>' +
     '</div>' +
     '<div class="bl-legend">' + BULLETIN_TYPES.map(t =>
       '<span class="bl-tag ' + bulletinColor(t) + '">' + esc(t) + '</span>').join("") + '</div>' +
-    '<div class="gl-toolbar">' +
-      '<div class="seg" role="group" aria-label="View">' +
-        [["calendar", "Calendar"], ["list", "List"]].map(o =>
-          '<button type="button" class="' + (bulletinView === o[0] ? "on" : "") + '" onclick="bulletinSetView(\'' + o[0] + '\')">' + o[1] + '</button>'
-        ).join("") +
-      '</div>' +
-    '</div>' +
     (bulletinView === "calendar" ? bulletinCalendarHtml() : bulletinListHtml());
 }
 

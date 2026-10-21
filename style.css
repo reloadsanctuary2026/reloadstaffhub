@@ -43,10 +43,12 @@ h1, h2, h3 { margin: 0; letter-spacing: -0.01em; }
 /* ---------- LOGIN ---------- */
 
 .login-screen {
+  position: relative;
   min-height: 100vh;
   display: flex; align-items: center; justify-content: center;
-  padding: 24px 16px;
+  padding: 24px 16px 56px;
 }
+.login-screen .footer { position: absolute; left: 0; right: 0; bottom: 14px; padding: 0; }
 .login-card {
   width: 100%; max-width: 380px;
   background: var(--surface);
@@ -690,3 +692,20 @@ ul.plain li:last-child { border-bottom: 0; }
 
 /* Tombol di kanan judul (Cards/List, + Add) */
 .section-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+
+/* Konsistensi: tombol di judul, jarak tombol, dan tombol Edit */
+.hero .edit-btn, .hero .add-btn { margin: 14px 8px 0 0; }
+.section-actions > * { min-height: 36px; height: 36px; box-sizing: border-box; display: inline-flex; align-items: center; }
+.section-actions .seg button { min-height: 0; height: 36px; padding: 0 14px; font-size: 14px; }
+.section-actions .add-btn, .section-actions .small-link { padding: 0 14px; font-size: 13px; }
+.tile-body .edit-btn { align-self: flex-start; }
+.row { align-items: center; }
+.bc-head { justify-content: center; gap: 18px; }
+
+/* Read more dan Edit: tinggi dan posisi sama di satu baris */
+.more, .edit-btn { height: 36px; min-height: 36px; }
+.more { padding: 0 6px; }
+.more-s, .more-m, .edit-btn { box-sizing: border-box; }
+.more-m { display: none; }
+.more-s { display: inline-block; }
+.guest-card-actions, .bl-actions { align-items: center; }
