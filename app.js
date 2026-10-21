@@ -4,7 +4,7 @@
  * Riwayat perubahan ada di CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.28.4";
+const APP_VERSION = "2.29.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -330,7 +330,9 @@ function endSession() {
   writeStore_("rsh_token", null);
   appData = null;
   loadedKeys = {};
+  loadedAt = {};
   fetchingTab = {};
+  refreshing = {};
   tabCategory = {};
   closeForm();
   showLogin();
@@ -344,7 +346,12 @@ const HOME_DATA = ["guests", "bulletin", "upsell", "inspiration"];
 const TAB_DATA = { food: ["food"], beverage: ["beverage"], sop: ["sop"], academy: ["academy"], teams: ["teams"], about: ["about"] };
 const TAB_CATEGORY_FIELD = { food: "category", beverage: "category", sop: "category", academy: "category", teams: "department" };
 let loadedKeys = {};
+let loadedAt = {};        // waktu tiap sheet terakhir dimuat (ms)
 let fetchingTab = {};
+let refreshing = {};
+const STALE_MS = 60000;   // data lebih tua dari ini dicek ulang diam-diam
+const PREFETCH_ORDER = ["food", "beverage", "sop", "teams", "academy", "about"];
+const PREFETCH_DELAY_MS = 1500;
 let tabCategory = {};   // kategori yang dipilih per tab, "" = semua
 let menuView = "grid";  // food dan beverage: grid (kartu) atau list (baris)
 
@@ -357,6 +364,7 @@ function withDefaults(data) {
 /** Saat login: data Home dimuat lewat renderTab, jadi di sini cukup reset. */
 function loadData() {
   loadedKeys = {};
+  loadedAt = {};
   fetchingTab = {};
   appData = withDefaults({});
   renderTab();
@@ -379,8 +387,9 @@ function ensureTab(tab) {
       if (!appData) return;   // sudah logout
       missing.forEach(function (k) {
         appData[k] = Array.isArray(data[k]) ? data[k] : [];
-        loadedKeys[k] = true;
       });
+      markLoaded(missing);
+      if (tab === "home") setTimeout(prefetchTabs, PREFETCH_DELAY_MS);
       if (activeTab === tab) renderTab();
     })
     .catch(function (e) {
@@ -388,6 +397,55 @@ function ensureTab(tab) {
       clearTimeout(hintTimer);
       handleApiError(e);
       if (activeTab === tab) showLoadError(e.message);
+    });
+}
+
+function markLoaded(keys) {
+  const now = Date.now();
+  keys.forEach(function (k) {
+    loadedKeys[k] = true;
+    loadedAt[k] = now;
+  });
+}
+
+/** Muat di latar belakang, satu per satu, supaya tab lain sudah siap saat dibuka. Tidak menampilkan apa-apa. */
+async function prefetchTabs() {
+  for (const tab of PREFETCH_ORDER) {
+    if (!appData) return;   // sudah logout
+    const keys = (TAB_DATA[tab] || []).filter(k => !loadedKeys[k]);
+    if (!keys.length) continue;
+    try {
+      const data = await api("getData", [sessionToken, keys]);
+      if (!appData) return;
+      keys.forEach(function (k) {
+        appData[k] = Array.isArray(data[k]) ? data[k] : [];
+      });
+      markLoaded(keys);
+    } catch (e) {
+      return;   // gagal diam-diam, tab akan memuat sendiri saat dibuka
+    }
+  }
+}
+
+/** Data yang sudah lama dicek ulang diam-diam. Halaman digambar ulang hanya kalau isinya berubah. */
+function refreshIfStale(tab) {
+  const keys = tab === "home" ? HOME_DATA : (TAB_DATA[tab] || []);
+  const old = keys.filter(k => loadedKeys[k] && Date.now() - (loadedAt[k] || 0) > STALE_MS);
+  if (!old.length || refreshing[tab]) return;
+  refreshing[tab] = true;
+  const before = JSON.stringify(old.map(k => appData[k]));
+  api("getData", [sessionToken, old])
+    .then(function (data) {
+      refreshing[tab] = false;
+      if (!appData) return;
+      old.forEach(function (k) {
+        appData[k] = Array.isArray(data[k]) ? data[k] : [];
+      });
+      markLoaded(old);
+      if (activeTab === tab && before !== JSON.stringify(old.map(k => appData[k]))) renderTab();
+    })
+    .catch(function () {
+      refreshing[tab] = false;
     });
 }
 
@@ -401,7 +459,7 @@ async function refreshSheet(sheetKey) {
   try {
     const data = await api("getData", [sessionToken, [sheetKey]]);
     appData[sheetKey] = Array.isArray(data[sheetKey]) ? data[sheetKey] : [];
-    loadedKeys[sheetKey] = true;
+    markLoaded([sheetKey]);
   } catch (e) {
     handleApiError(e);
   }
@@ -477,6 +535,7 @@ function renderTab() {
     console.error(e);
     app.innerHTML = '<div class="empty">Something went wrong while showing this page.<br><small>' + esc(e.message) + '</small></div>';
   }
+  refreshIfStale(activeTab);
 }
 
 function renderActiveView() {
