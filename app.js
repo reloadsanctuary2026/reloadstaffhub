@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.36.0";
+const APP_VERSION = "2.37.1";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -850,7 +850,7 @@ function academyCard(r) {
     '</div>' +
     (r.content ? '<p class="pre muted small">' + esc(r.content) + '</p>' : '') +
     '<div class="actions">' +
-      (r.video ? '<a class="btn small outline" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="' + esc(r.video) + '">Watch video</a>' : '') +
+      (r.video ? '<a class="btn small outline" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="' + safeUrl(r.video) + '">Watch video</a>' : '') +
       materialButtons(r) +
     '</div>' +
     editBtn("academy", r, true) +
@@ -1412,7 +1412,7 @@ function bulletinItem(r) {
 /* ---------- PHOTO & DETAIL ---------- */
 
 function imgUrlLarge(id) {
-  if (/^https?:\/\//.test(id)) return id;
+  if (/^https:\/\/[^\s"'<>]+$/.test(id)) return id;
   return "https://drive.google.com/thumbnail?id=" + encodeURIComponent(id) + "&sz=w1600";
 }
 
@@ -1440,7 +1440,7 @@ function closePhoto() {
 const DETAIL_CONFIG = {
   food:     { label: "Food Bible", title: "name", meta: [["Category", "category"], ["Price", "price", "Rp "], ["Allergens", "allergens"]], text: "description", links: [] },
   beverage: { label: "Beverage Bible", title: "name", meta: [["Category", "category"], ["Price", "price", "Rp "], ["Allergens", "allergens"]], text: "description", links: [] },
-  teams:    { label: "Our Teams", title: "name", meta: [["Department", "department"], ["Position", "position"], ["Phone", "phone"]], text: null, links: [] },
+  teams:    { label: "Our Teams", title: "name", meta: [["Department", "department"], ["Position", "position"]], text: null, links: [] },
   academy:  { label: "Reload Academy", title: "title", meta: [["Category", "category"], ["Difficulty", "difficulty"], ["Reading time", "readingTime"], ["Updated", "updated"], ["Summary", "shortDesc"]], text: "content", links: [["Read material", "fullLink"], ["Watch video", "video"]] },
   bulletin: { label: "Staff Bulletin", title: "title", meta: [["Date", "date"], ["Type", "type"]], text: "description", links: [] }
 };
@@ -1453,19 +1453,16 @@ function openDetail(sheetKey, row) {
     ? '<div class="detail-row"><span class="muted">' + esc(m[0]) + '</span><span>' + esc((m[2] || "") + r[m[1]]) + '</span></div>'
     : "";
   const links = sheetKey === "academy"
-    ? (r.video ? '<a class="btn small outline" target="_blank" rel="noopener" href="' + esc(r.video) + '">Watch video</a>' : '') + materialButtons(r)
+    ? (r.video ? '<a class="btn small outline" target="_blank" rel="noopener" href="' + safeUrl(r.video) + '">Watch video</a>' : '') + materialButtons(r)
     : cfg.links.filter(l => r[l[1]]).map(l =>
-        '<a class="btn small outline" target="_blank" rel="noopener" href="' + esc(r[l[1]]) + '">' + esc(l[0]) + '</a>').join("");
-  const wa = sheetKey === "teams" && r.phone
-    ? '<a class="btn small" target="_blank" rel="noopener" href="https://wa.me/' + esc(String(r.phone).replace(/\D/g, "")) + '">WhatsApp</a>'
-    : "";
+        '<a class="btn small outline" target="_blank" rel="noopener" href="' + safeUrl(r[l[1]]) + '">' + esc(l[0]) + '</a>').join("");
   document.getElementById("detailTitle").innerText = cfg.label;
   document.getElementById("detailBody").innerHTML =
     (r.image ? photoBtn(r.image, '<img class="detail-hero" src="' + imgUrl(r.image) + '" alt="">') : "") +
     '<strong class="detail-name">' + esc(r[cfg.title]) + '</strong>' +
     cfg.meta.map(metaRow).join("") +
     (cfg.text && r[cfg.text] ? '<p class="pre detail-text">' + esc(r[cfg.text]) + '</p>' : "") +
-    ((links || wa) ? '<div class="detail-links">' + wa + links + '</div>' : "");
+    (links ? '<div class="detail-links">' + links + '</div>' : "");
   document.getElementById("detailModal").classList.remove("hidden");
 }
 
@@ -1796,8 +1793,8 @@ async function saveForm() {
       await api("addRow", [sessionToken, sheetKey, newValues]);
       toast("Added.");
     } else {
-      const res = await api("updateRow", [sessionToken, sheetKey, row, oldValues, newValues]);
-      toast(res.changed ? "Saved." : "No changes.");
+      const res = (await api("updateRow", [sessionToken, sheetKey, row, oldValues, newValues])) || {};
+      toast(res.changed === 0 ? "No changes." : "Saved.");
     }
     closeForm(true);
     refreshSheet(sheetKey);
@@ -1931,7 +1928,7 @@ function materialsOf(r) {
 
 function materialButtons(r) {
   return materialsOf(r).map(function (m) {
-    return '<a class="btn small outline" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="' + esc(m.href) + '">' + esc(m.name) + '</a>';
+    return '<a class="btn small outline" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="' + safeUrl(m.href) + '">' + esc(m.name) + '</a>';
   }).join("");
 }
 
@@ -2075,7 +2072,7 @@ function groupBy(items, field) {
 
 /** Accepts a Drive file ID, or a direct image link (for example from HR). */
 function imgUrl(id) {
-  if (/^https?:\/\//.test(id)) return id;
+  if (/^https:\/\/[^\s"'<>]+$/.test(id)) return id;
   return "https://drive.google.com/thumbnail?id=" + encodeURIComponent(id) + "&sz=w400";
 }
 
@@ -2095,6 +2092,12 @@ function initial(text) {
 
 function emptyState(msg) {
   return '<div class="empty">' + esc(msg) + '</div>';
+}
+
+/** Link for href: only http(s) links, so a javascript: link from the sheet cannot run. */
+function safeUrl(u) {
+  const s = String(u == null ? "" : u).trim();
+  return /^https?:\/\//i.test(s) ? esc(s) : "#";
 }
 
 function esc(s) {
