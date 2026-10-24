@@ -45,6 +45,16 @@ function excelDateToIso(v) {
   return m ? m[3] + "-" + m[2].padStart(2, "0") + "-" + m[1].padStart(2, "0") : "";
 }
 
+/** Servers are the only ones in the Upsell Tracker and My Upsell. */
+function isServerTitle(title) {
+  return /waiter|waitress|server/i.test(String(title || ""));
+}
+
+/** Staff whose job title is a server role. The tracker only works with these people. */
+function serverStaff() {
+  return (tracker.staff || []).filter(s => isServerTitle(s.jobTitle));
+}
+
 function trackerNorm(s) {
   return String(s == null ? "" : s).toLowerCase().replace(/\s+/g, " ").trim();
 }
@@ -87,7 +97,7 @@ async function parseSalesFile(file) {
 async function readRosterFile(file) {
   const pdfjs = await loadPdfJs();
   const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
-  const staff = tracker.staff || [];
+  const staff = serverStaff();
   let text = "";
   const shifts = {};
   for (let p = 1; p <= doc.numPages; p++) {
@@ -182,7 +192,7 @@ function posMapIndex() {
 /** Suggestion for an unlinked POS name: one staff whose nickname or first name is the same. Not saved until confirmed. */
 function suggestStaff(posName) {
   const w = trackerNorm(posName);
-  const hits = (tracker.staff || []).filter(s => trackerNorm(s.nickname) === w || trackerNorm(s.name.split(" ")[0]) === w);
+  const hits = serverStaff().filter(s => trackerNorm(s.nickname) === w || trackerNorm(s.name.split(" ")[0]) === w);
   return hits.length === 1 ? hits[0].nik : "";
 }
 
@@ -203,6 +213,7 @@ function trackerResults(dateIso, items) {
   const unlinked = {};  // POS name -> { items: { item: qty } }
   Object.keys(byWaiter).forEach(function (w) {
     const nik = map[trackerNorm(w)];
+    if (nik === "-") return;   // marked as not a server
     if (!nik) {
       unlinked[w] = { items: byWaiter[w] };
       return;
@@ -296,10 +307,13 @@ function viewTracker() {
   if (!tracker.staff) return html + '<div class="empty">Loading staff list…</div>';
 
   const res = trackerResults(tracker.date, items);
-  const onDuty = tracker.roster ? onDutyNiks(tracker.staff, tracker.roster) : [];
+  const servers = serverStaff();
+  const serverNik = {};
+  servers.forEach(s => { serverNik[s.nik] = true; });
+  const onDuty = tracker.roster ? onDutyNiks(servers, tracker.roster) : [];
   const nikList = {};
   onDuty.forEach(n => { nikList[n] = true; });
-  Object.keys(res.people).forEach(n => { nikList[n] = true; });
+  Object.keys(res.people).filter(n => serverNik[n]).forEach(n => { nikList[n] = true; });
   const staffByNik = {};
   tracker.staff.forEach(s => { staffByNik[s.nik] = s; });
 
@@ -356,8 +370,9 @@ function viewTracker() {
       '<p class="muted small">Link each name once. After that it is counted automatically on later days.</p>' +
       unlinkedNames.map(function (w, i) {
         const sugg = suggestStaff(w);
-        const opts = '<option value="">Choose staff…</option>' + tracker.staff.slice().sort((a, b) => a.name.localeCompare(b.name)).map(s =>
-          '<option value="' + esc(s.nik) + '"' + (s.nik === sugg ? ' selected' : '') + '>' + esc(s.name) + '</option>').join("");
+        const opts = '<option value="">Choose a server…</option>' + servers.slice().sort((a, b) => a.name.localeCompare(b.name)).map(s =>
+          '<option value="' + esc(s.nik) + '"' + (s.nik === sugg ? ' selected' : '') + '>' + esc(s.name) + '</option>').join("") +
+          '<option value="__ignore__">Not a server (ignore this name)</option>';
         return '<div class="tracker-link-row"><span><strong>' + esc(w) + '</strong> <small class="muted">' + sumItems(res.unlinked[w].items) + ' challenge items' + (sugg ? ' · suggested' : '') + '</small></span>' +
           '<select id="map-' + i + '">' + opts + '</select>' +
           '<button class="button-secondary" type="button" onclick="saveWaiterMap(' + i + ')">Save</button></div>';
@@ -443,8 +458,19 @@ function onTrackerDate(v) {
 async function saveWaiterMap(i) {
   const posName = tracker.unlinkedNames[i];
   const nik = document.getElementById("map-" + i).value;
-  const staff = (tracker.staff || []).find(s => s.nik === nik);
-  if (!staff) return toast("Choose a staff member first.");
+  if (nik === "__ignore__") {
+    try {
+      await api("addRow", [sessionToken, "posMap", { pos: posName, nik: "-", name: "Not a server" }]);
+      toast("Ignored: " + posName);
+      refreshSheet("posMap");
+    } catch (e) {
+      if (isSessionExpired(e)) return handleApiError(e);
+      toast(e.message);
+    }
+    return;
+  }
+  const staff = serverStaff().find(s => s.nik === nik);
+  if (!staff) return toast("Choose a server first.");
   try {
     await api("addRow", [sessionToken, "posMap", { pos: posName, nik: nik, name: staff.name }]);
     toast("Saved: " + posName + " → " + staff.name);

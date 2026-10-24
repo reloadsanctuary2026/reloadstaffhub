@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.41.0";
+const APP_VERSION = "2.42.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -141,6 +141,7 @@ const GUEST_HOME_LIMIT = 5;
 const GUEST_PREVIEW_PHONE = 50;    // potongan catatan di HP
 const GUEST_PREVIEW_DESKTOP = 80;  // potongan catatan di desktop
 const BULLETIN_HOME_LIMIT = 5;
+let currentJobTitle = "";   // used to show My Upsell to servers only
 let currentCanEdit = false;   // from the backend (canEditTier_), the single source of truth
 let appData = null;
 let activeTab = "home";
@@ -299,6 +300,7 @@ function enterApp(user) {
   currentName = user.name || "";
   currentNickname = user.nickname || "";
   currentCanEdit = !!user.canEdit;
+  currentJobTitle = user.jobTitle || "";
   document.getElementById("loginScreen").classList.add("hidden");
   document.getElementById("appShell").classList.remove("hidden");
   document.getElementById("userName").innerText = currentName;
@@ -537,7 +539,7 @@ function handleApiError(e) {
 /* ---------- NAVIGATION ---------- */
 
 function renderTabbar() {
-  document.getElementById("tabbar").innerHTML = TABS.filter(t => (!t.editorsOnly || canEdit()) && (!t.staffOnly || !canEdit())).map(function (t) {
+  document.getElementById("tabbar").innerHTML = TABS.filter(t => (!t.editorsOnly || canEdit()) && (!t.staffOnly || (!canEdit() && isServerTitle(currentJobTitle)))).map(function (t) {
     const inner = t.icon ? '<span class="nav-icon">' + t.icon + '</span>' : esc(t.label);
     return '<button class="tab' + (t.key === activeTab ? ' active' : '') +
       '" type="button" aria-label="' + esc(t.label) + '" onclick="showTab(\'' + t.key + '\')">' + inner + '</button>';
