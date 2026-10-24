@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.34.1";
+const APP_VERSION = "2.34.2";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -907,10 +907,13 @@ async function saveRearrange() {
   refreshSheet("teams");
 }
 
+let dragHover = null;
+let dragSide = null;
+
 function onRearrangePointerDown(e) {
   if (!rearranging || !canEdit() || activeTab !== "teams" || viewOf("teams") !== "grid") return;
   const card = e.target.closest(".person[data-row]");
-  if (!card || e.target.closest("button, a")) return;
+  if (!card || e.target.closest(".corner-edit")) return;
   const rect = card.getBoundingClientRect();
   const ph = document.createElement("div");
   ph.className = "person-placeholder";
@@ -918,36 +921,44 @@ function onRearrangePointerDown(e) {
   ph.style.height = rect.height + "px";
   card.parentNode.insertBefore(ph, card);
   dragState = { card: card, ph: ph, group: card.parentNode, offX: e.clientX - rect.left, offY: e.clientY - rect.top };
+  dragHover = null;
+  dragSide = null;
   Object.assign(card.style, { position: "fixed", left: rect.left + "px", top: rect.top + "px", width: rect.width + "px", zIndex: "50", pointerEvents: "none" });
   e.preventDefault();
 }
 
+/* Placeholder hanya pindah saat kursor MASUK ke kartu lain, bukan tiap gerakan.
+   Jadi tidak bolak-balik (ketuker) di tengah kartu. */
 function onRearrangePointerMove(e) {
   if (!dragState) return;
   const d = dragState;
   d.card.style.left = (e.clientX - d.offX) + "px";
   d.card.style.top = (e.clientY - d.offY) + "px";
-  let best = null;
-  let bestDist = Infinity;
-  Array.from(d.group.querySelectorAll(":scope > .person[data-row]")).forEach(function (el) {
-    if (el === d.card) return;
-    const b = el.getBoundingClientRect();
-    const dist = Math.hypot(e.clientX - (b.left + b.width / 2), e.clientY - (b.top + b.height / 2));
-    if (dist < bestDist) {
-      bestDist = dist;
-      best = el;
-    }
-  });
-  if (!best) return;
-  const b = best.getBoundingClientRect();
-  const before = e.clientY < b.top + b.height / 2 || (e.clientY < b.bottom && e.clientX < b.left + b.width / 2);
-  d.group.insertBefore(d.ph, before ? best : best.nextSibling);
+  const hit = document.elementFromPoint(e.clientX, e.clientY);
+  const target = hit && hit.closest(".person[data-row]");
+  if (!target || target === d.card || target.parentNode !== d.group) return;
+  const b = target.getBoundingClientRect();
+  const oneColumn = b.width > d.group.getBoundingClientRect().width * 0.8;
+  const pos = oneColumn ? (e.clientY - b.top) / b.height : (e.clientX - b.left) / b.width;
+  if (target !== dragHover) {
+    dragHover = target;
+    dragSide = pos < 0.5 ? "before" : "after";
+  } else if (dragSide === "after" && pos < 0.3) {
+    dragSide = "before";
+  } else if (dragSide === "before" && pos > 0.7) {
+    dragSide = "after";
+  } else {
+    return;
+  }
+  d.group.insertBefore(d.ph, dragSide === "before" ? target : target.nextSibling);
 }
 
 function onRearrangePointerUp() {
   if (!dragState) return;
   const d = dragState;
   dragState = null;
+  dragHover = null;
+  dragSide = null;
   Object.assign(d.card.style, { position: "", left: "", top: "", width: "", zIndex: "", pointerEvents: "" });
   d.ph.replaceWith(d.card);
   suppressClick = true;
