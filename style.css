@@ -739,3 +739,6 @@ ul.plain li:last-child { border-bottom: 0; }
 .bc-day-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 16px 0 8px; }
 .bc-day-head .bc-day-title { margin: 0; }
 .bc-day-head .add-btn { height: 36px; }
+
+/* Tanda › di baris: rata tengah secara vertikal */
+.chev { display: flex; align-items: center; line-height: 1; }

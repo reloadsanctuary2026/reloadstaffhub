@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.32.0";
+const APP_VERSION = "2.32.1";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -811,7 +811,7 @@ function academyList() {
     return grouped(items, "category", list => list.map(academyRow).join(""));
   }
   return grouped(items, "category", list =>
-    '<div class="grid two">' + list.map(academyCard).join("") + '</div>');
+    '<div class="grid">' + list.map(academyCard).join("") + '</div>');
 }
 
 function academyRow(r) {
@@ -837,7 +837,7 @@ function academyCard(r) {
     '</div>' +
     (r.content ? '<p class="pre muted small">' + esc(r.content) + '</p>' : '') +
     '<div class="actions">' +
-      (r.video ? '<a class="btn small" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="' + esc(r.video) + '">Watch video</a>' : '') +
+      (r.video ? '<a class="btn small outline" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="' + esc(r.video) + '">Watch video</a>' : '') +
       (r.fullLink ? '<a class="btn small outline" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="' + esc(r.fullLink) + '">Read material</a>' : '') +
     '</div>' +
     editBtn("academy", r, true) +
