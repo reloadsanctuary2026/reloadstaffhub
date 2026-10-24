@@ -484,6 +484,7 @@ function shortDay(iso) {
 
 function viewMyUpsell() {
   let html = '<div class="page-heading"><h2>My Upsell</h2><p>Your challenge items, targets, and how many you sold.</p></div>';
+  if (myUpsell.error) return html + '<div class="empty">Could not load your results: ' + esc(myUpsell.error) + '<br><small>If this keeps happening, the backend (Code.gs) may need to be updated to 2.34.0 and redeployed.</small></div>';
   if (!myUpsell.recap) {
     loadMyRecap();
     return html + '<div class="empty">Loading…</div>';
@@ -530,7 +531,8 @@ function loadMyRecap() {
     .catch(function (e) {
       myUpsell.loading = false;
       if (isSessionExpired(e)) return handleApiError(e);
-      toast(e.message);
+      myUpsell.error = e.message;   // show it instead of loading again and again
+      renderTab();
     });
 }
 
