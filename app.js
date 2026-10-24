@@ -1,10 +1,10 @@
 /****************************************
  * RELOAD STAFF HUB — FRONTEND (GitHub Pages)
- * Version : 2.19.0 (halaman Our Guests lengkap: cari, filter kategori, urutan, grid/list)
- * Riwayat perubahan ada di CHANGELOG.md
+ * Version : see APP_VERSION (full Our Guests page: search, category filter, sort, grid/list)
+ * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.31.0";
+const APP_VERSION = "2.32.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -19,24 +19,27 @@ const TABS = [
 ];
 
 /*
- * Konfigurasi form. Tiap field punya cara isi sendiri, supaya pengguna tidak perlu mengetik
- * yang sebenarnya bisa dipilih:
+ * Form configuration. Each field has its own input type, so users do not have to type what can be picked
+ * from a list:
  *   input: "date" | "today" | "price" | "phone" | "photo" | "pdf" | "url" | "multi" | "allergens"
- *          (kosong = teks biasa)
- *   options: daftar pilihan tetap
- *   src: true = pilihan diambil dari nilai yang sudah ada di sheet, plus "+ New…"
+ *          (empty = plain text)
+ *   options: fixed list of choices
+ *   src: true = choices taken from values already in the sheet, plus "+ New…"
  */
-/* Sama dengan dropdown Status di sheet. */
+/* Same as the Status dropdown in the sheet. */
 const STATUS_OPTIONS = ["ACTIVE", "NOT ACTIVE"];
 const SESI_ORDER = ["Morning", "Afternoon", "Evening"];
 const ALLERGEN_OPTIONS = ["Gluten", "Milk", "Egg", "Nut", "Seafood", "Soy"];
 const DIFFICULTY_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
 const SECTION_OPTIONS = ["Company Story", "Vision", "Mission", "Identity & Essences", "Core Values"];
-/* Kategori tamu. Sama dengan GUEST_CATEGORIES di backend (Code.gs). Kalau berubah, ubah keduanya. */
+/* Guest categories. Same as GUEST_CATEGORIES in the backend (Code.gs). If one changes, change both. */
 const GUEST_CATEGORIES = ["Birthday", "Preference", "VIP", "Farewell", "Celebration", "Achievement", "Complaint"];
-/* Tipe bulletin. Sama dengan dropdown Type di sheet. Warna: green = event, yellow = pemberitahuan, lainnya abu-abu. */
-const BULLETIN_TYPES = ["Meeting", "Internal Information"];
-const BULLETIN_COLORS = { "Meeting": "green", "Internal Information": "yellow" };
+/* Bulletin types now come from the 12_BulletinTypes tab (see DEFAULT_BULLETIN_TYPES below). */
+/* Used when the 12_BulletinTypes tab is still empty. The real names and colors are set in that sheet. */
+const DEFAULT_BULLETIN_TYPES = [
+  { type: "Meeting", color: "#8FAA4B" },
+  { type: "Internal Information", color: "#E0B43A" }
+];
 
 /* Start hour of each shift. A shift is "now" from its start until the next shift starts. */
 const SHIFT_START = { "M6": "06:00", "M8": "08:00", "M11": "11:00", "MD12": "12:00", "E2": "14:30" };
@@ -62,7 +65,7 @@ const EDIT_FIELDS = {
   ],
   bulletin: [
     { key: "date",        label: "Date", input: "date" },
-    { key: "type",        label: "Type", options: BULLETIN_TYPES },
+    { key: "type",        label: "Type", options: [], dynamicOptions: bulletinTypeNames },
     { key: "title",       label: "Title" },
     { key: "description", label: "Description", input: "multi" },
     { key: "image",       label: "Photo", input: "photo" },
@@ -136,16 +139,16 @@ const GUEST_HOME_LIMIT = 5;
 const GUEST_PREVIEW_PHONE = 50;    // potongan catatan di HP
 const GUEST_PREVIEW_DESKTOP = 80;  // potongan catatan di desktop
 const BULLETIN_HOME_LIMIT = 5;
-let currentCanEdit = false;   // dari backend (canEditTier_), satu sumber kebenaran
+let currentCanEdit = false;   // from the backend (canEditTier_), the single source of truth
 let appData = null;
 let activeTab = "home";
 let searchText = "";
 let guestsLanding = false;
 let bulletinLanding = false;
 let bulletinView = "list";
-let bulletinMonth = null;   // { y, m } bulan yang sedang dilihat di kalender
-let bulletinDay = null;     // "YYYY-MM-DD" hari yang dipilih di kalender
-let bulletinShown = 0;   // diisi saat halaman Staff Bulletin dibuka
+let bulletinMonth = null;   // { y, m } month currently shown in the calendar
+let bulletinDay = null;     // "YYYY-MM-DD" day selected in the calendar
+let bulletinShown = 0;   // set when the Staff Bulletin page is opened
 const GUESTS_PAGE_SIZE = 12;
 let guestFilter = { q: "", cat: -1, sort: "newest", view: "grid", status: "all", shown: GUESTS_PAGE_SIZE };
 let formState = null;   // { mode: "add" | "edit", sheetKey, row, original }
@@ -153,20 +156,20 @@ let formState = null;   // { mode: "add" | "edit", sheetKey, row, original }
 /* ---------- API ---------- */
 
 /**
- * Panggil backend Apps Script. Pakai text/plain supaya tidak kena preflight CORS.
- * Balasan: { ok, data } atau { ok:false, error }.
+ * Call the Apps Script backend. Uses text/plain so it does not trigger a CORS preflight.
+ * Reply: { ok, data } or { ok:false, error }.
  */
 const API_TIMEOUT_MS = 20000;
 let pendingRequests = 0;
 
-/** Bar loading tipis di atas layar, tampil selama ada request ke server. */
+/** Thin loading bar at the top of the screen, shown while requests are running. */
 function trackRequest(delta) {
   pendingRequests = Math.max(0, pendingRequests + delta);
   const bar = document.getElementById("progress");
   if (bar) bar.classList.toggle("hidden", pendingRequests === 0);
 }
 
-/** Tombol dengan spinner dan label sementara. Dipakai untuk aksi yang menunggu server. */
+/** Button with a spinner and a temporary label. Used for actions that wait for the server. */
 function setBusy(btn, busy, label) {
   if (!btn) return;
   if (busy) {
@@ -205,7 +208,7 @@ async function api(fn, args) {
   }
 }
 
-/* ---------- STORAGE (aman kalau diblokir browser) ---------- */
+/* ---------- STORAGE (safe if the browser blocks it) ---------- */
 
 function readStore_(key) {
   try { return localStorage.getItem(key); } catch (e) { return null; }
@@ -258,7 +261,7 @@ window.addEventListener("load", async function () {
 
 /* ---------- LOGIN ---------- */
 
-/** Foto dari HR kalau ada, kalau tidak inisial nama. */
+/** Photo from HR if available, otherwise the name initials. */
 function renderAvatar(photo) {
   const el = document.getElementById("userAvatar");
   el.innerHTML = photo
@@ -344,23 +347,28 @@ function endSession() {
 }
 
 /** Sheets that may be missing from the backend response are treated as empty. */
-const DATA_KEYS = ["importantInfo", "upsell", "bulletin", "inspiration", "food", "beverage", "sop", "teams", "about", "guests", "academy"];
+const DATA_KEYS = ["importantInfo", "upsell", "bulletin", "inspiration", "food", "beverage", "sop", "teams", "about", "guests", "academy", "bulletinTypes"];
 
-/* Data dimuat per bagian. Home dimuat saat login. Tiap tab dimuat saat dibuka, lalu disimpan. */
-const HOME_DATA = ["guests", "bulletin", "upsell", "inspiration"];
+/* Data is loaded per section. Home loads at login. Each tab loads when opened, then is kept. */
+const HOME_DATA = ["guests", "bulletin", "upsell", "inspiration", "bulletinTypes"];
 const TAB_DATA = { food: ["food"], beverage: ["beverage"], sop: ["sop"], academy: ["academy"], teams: ["teams"], about: ["about"] };
 const TAB_CATEGORY_FIELD = { food: "category", beverage: "category", sop: "category", academy: "category", teams: "department" };
 let loadedKeys = {};
-let loadedAt = {};        // waktu tiap sheet terakhir dimuat (ms)
+let loadedAt = {};        // last load time of each sheet (ms)
 let fetchingTab = {};
 let refreshing = {};
-const STALE_MS = 60000;   // data lebih tua dari ini dicek ulang diam-diam
+const STALE_MS = 60000;   // data older than this is re-checked silently
 const PREFETCH_ORDER = ["food", "beverage", "sop", "teams", "academy", "about"];
 const PREFETCH_DELAY_MS = 1500;
-const PREFETCH_SLOW_MS = 6000;    // permintaan lebih lama dari ini dianggap lambat (cold start bisa sampai beberapa detik)
-const PREFETCH_SLOW_LIMIT = 2;    // dua permintaan lambat berturut-turut: prefetch berhenti sampai login berikutnya
-let tabCategory = {};   // kategori yang dipilih per tab, "" = semua
-let menuView = "grid";  // food dan beverage: grid (kartu) atau list (baris)
+const PREFETCH_SLOW_MS = 6000;    // requests slower than this count as slow (a cold start can take several seconds)
+const PREFETCH_SLOW_LIMIT = 2;    // two slow requests in a row: prefetch stops until the next login
+let tabCategory = {};   // category selected per tab, "" = all
+let tabView = {};       // view per tab: "grid" (cards) or "list" (rows)
+
+/** Active view of each tab. SOP defaults to list because it is already rows. */
+function viewOf(tab) {
+  return tabView[tab] || (tab === "sop" ? "list" : "grid");
+}
 
 function withDefaults(data) {
   const out = Object.assign({}, data);
@@ -368,7 +376,7 @@ function withDefaults(data) {
   return out;
 }
 
-/** Saat login: data Home dimuat lewat renderTab, jadi di sini cukup reset. */
+/** At login: Home data is loaded through renderTab, so a reset is enough here. */
 function loadData() {
   loadedKeys = {};
   loadedAt = {};
@@ -377,7 +385,7 @@ function loadData() {
   renderTab();
 }
 
-/** Memuat data yang dibutuhkan tab ini, hanya yang belum ada. Setelah selesai, halaman digambar ulang. */
+/** Loads the data this tab needs, only what is missing. When done, the page is redrawn. */
 function ensureTab(tab) {
   const keys = tab === "home" ? HOME_DATA : (TAB_DATA[tab] || []);
   const missing = keys.filter(k => !loadedKeys[k]);
@@ -391,7 +399,7 @@ function ensureTab(tab) {
     .then(function (data) {
       fetchingTab[tab] = false;
       clearTimeout(hintTimer);
-      if (!appData) return;   // sudah logout
+      if (!appData) return;   // already logged out
       missing.forEach(function (k) {
         appData[k] = Array.isArray(data[k]) ? data[k] : [];
       });
@@ -415,11 +423,11 @@ function markLoaded(keys) {
   });
 }
 
-/** Muat di latar belakang, satu per satu, supaya tab lain sudah siap saat dibuka. Tidak menampilkan apa-apa. */
+/** Loads in the background, one at a time, so other tabs are ready when opened. Shows nothing. */
 async function prefetchTabs() {
   let slowInARow = 0;
   for (const tab of PREFETCH_ORDER) {
-    if (!appData) return;   // sudah logout
+    if (!appData) return;   // already logged out
     const keys = (TAB_DATA[tab] || []).filter(k => !loadedKeys[k]);
     if (!keys.length) continue;
     const started = Date.now();
@@ -431,14 +439,14 @@ async function prefetchTabs() {
       });
       markLoaded(keys);
     } catch (e) {
-      return;   // gagal diam-diam, tab akan memuat sendiri saat dibuka
+      return;   // failed silently; the tab will load itself when opened
     }
     slowInARow = Date.now() - started > PREFETCH_SLOW_MS ? slowInARow + 1 : 0;
-    if (slowInARow >= PREFETCH_SLOW_LIMIT) return;   // server sedang berat, berhenti dulu
+    if (slowInARow >= PREFETCH_SLOW_LIMIT) return;   // server is busy, stop for now
   }
 }
 
-/** Data yang sudah lama dicek ulang diam-diam. Halaman digambar ulang hanya kalau isinya berubah. */
+/** Data that is old is re-checked silently. The page is redrawn only if the content changed. */
 function refreshIfStale(tab) {
   const keys = tab === "home" ? HOME_DATA : (TAB_DATA[tab] || []);
   const old = keys.filter(k => loadedKeys[k] && Date.now() - (loadedAt[k] || 0) > STALE_MS);
@@ -465,7 +473,7 @@ function dataReady(tab) {
   return keys.every(k => loadedKeys[k]);
 }
 
-/** Setelah simpan atau hapus: muat ulang hanya sheet itu. */
+/** After a save or delete: reload only that sheet. */
 async function refreshSheet(sheetKey) {
   try {
     const data = await api("getData", [sessionToken, [sheetKey]]);
@@ -498,7 +506,7 @@ function retryLoad() {
   renderTab();
 }
 
-/** Sesi habis: pesan dari backend mengandung SESSION_EXPIRED. */
+/** Session expired: the backend message contains SESSION_EXPIRED. */
 function isSessionExpired(e) {
   return String(e && e.message).indexOf("SESSION_EXPIRED") !== -1;
 }
@@ -512,7 +520,7 @@ function handleApiError(e) {
   }
 }
 
-/* ---------- NAVIGASI ---------- */
+/* ---------- NAVIGATION ---------- */
 
 function renderTabbar() {
   document.getElementById("tabbar").innerHTML = TABS.map(function (t) {
@@ -595,12 +603,12 @@ function viewHome() {
     '</div>';
 }
 
-/** Satu kolom di Home: judul + tombol tambah, lalu isinya. */
+/** One column on Home: title + add button, then its content. */
 function homeCol(title, sheetKey, body, extra) {
   return '<section class="home-col">' + sectionHead(title, sheetKey, extra) + body + '</section>';
 }
 
-/** Shift yang sedang berjalan sekarang, atau null kalau tidak ada yang cocok. */
+/** The shift running right now, or null if none matches. */
 function currentShift() {
   const now = new Date();
   const minutes = now.getHours() * 60 + now.getMinutes();
@@ -622,7 +630,7 @@ function upsellPanel() {
   if (!rows.length) return emptyState("No upsell for today.");
 
   const now = currentShift();
-  const rank = name => (SHIFT_NAMES.indexOf(name) === -1 ? 99 : SHIFT_NAMES.indexOf(name));  // urut sesuai SHIFT_START
+  const rank = name => (SHIFT_NAMES.indexOf(name) === -1 ? 99 : SHIFT_NAMES.indexOf(name));  // ordered by SHIFT_START
   const names = rows.map(r => r.shift || "")
     .filter((x, i, arr) => arr.indexOf(x) === i)
     .sort((a, b) => ((b === now) - (a === now)) || (rank(a) - rank(b)));
@@ -653,7 +661,7 @@ function bulletinCard(r) {
     '<p class="pre muted">' + esc(r.description) + '</p>' +
     editBtn("bulletin", r, true) + '</div></div>';
 }
-/** Bagian hari: kunci untuk kutipan harian dan kata sapaan. */
+/** Part of day: the key for the daily quote and greeting. */
 function dayPart() {
   const h = new Date().getHours();
   if (h < 11) return { key: "Morning", word: "morning" };
@@ -662,18 +670,19 @@ function dayPart() {
   return { key: "Night", word: "night" };
 }
 
-/* ---------- MENU / SOP / ACADEMY (ada pencarian) ---------- */
+/* ---------- MENU / SOP / ACADEMY (with search) ---------- */
 
 function viewSearchable(sheetKey) {
   const isMenu = sheetKey === "food" || sheetKey === "beverage";
-  return sectionHead(SHEET_LABELS[sheetKey], sheetKey, isMenu ? menuViewToggle() : "") +
+  const hasView = ["food", "beverage", "sop", "academy"].indexOf(sheetKey) !== -1;
+  return sectionHead(SHEET_LABELS[sheetKey], sheetKey, hasView ? viewToggleHtml(sheetKey) : "") +
     '<input class="input search" type="search" placeholder="Search..." value="' + esc(searchText) +
     '" oninput="onSearch(this.value)">' +
     categoryChips(sheetKey) +
     '<div id="listArea">' + listHtml() + '</div>';
 }
 
-/** Chip All dan kategori dari data tab ini. */
+/** All chip and categories from this tab's data. */
 function categoryChips(tab) {
   const field = TAB_CATEGORY_FIELD[tab];
   if (!field) return "";
@@ -695,15 +704,16 @@ function inTabCategory(tab, r) {
   return !cur || r[TAB_CATEGORY_FIELD[tab]] === cur;
 }
 
-function menuViewToggle() {
+function viewToggleHtml(tab) {
+  const cur = viewOf(tab);
   return '<div class="seg menu-view" role="group" aria-label="View">' +
     [["grid", "Cards"], ["list", "List"]].map(o =>
-      '<button type="button" class="' + (menuView === o[0] ? "on" : "") + '" onclick="setMenuView(\'' + o[0] + '\')">' + o[1] + '</button>'
+      '<button type="button" class="' + (cur === o[0] ? "on" : "") + '" onclick="setTabView(\'' + tab + '\',\'' + o[0] + '\')">' + o[1] + '</button>'
     ).join("") + '</div>';
 }
 
-function setMenuView(mode) {
-  menuView = mode;
+function setTabView(tab, mode) {
+  tabView[tab] = mode;
   renderTab();
 }
 
@@ -724,7 +734,7 @@ function matches(fields) {
   return fields.join(" ").toLowerCase().indexOf(searchText) !== -1;
 }
 
-/** Kelompokkan item per field, judul kelompok di atas, isi dari renderBody. */
+/** Group items by field; group title on top, contents from renderBody. */
 function grouped(items, field, renderBody) {
   return groupBy(items, field).map(g =>
     '<h3 class="group">' + esc(g.key) + '</h3>' + renderBody(g.items)
@@ -734,7 +744,7 @@ function grouped(items, field, renderBody) {
 function menuList(rows, sheetKey) {
   const items = rows.filter(r => r.name && inTabCategory(sheetKey, r) && matches([r.category, r.name, r.description]));
   if (!items.length) return emptyState("No matching menu items.");
-  if (menuView === "list") {
+  if (viewOf(sheetKey) === "list") {
     return grouped(items, "category", list => list.map(r => menuRow(r, sheetKey)).join(""));
   }
   return grouped(items, "category", list =>
@@ -766,9 +776,22 @@ function menuCard(r, sheetKey) {
 function sopList() {
   const items = appData.sop.filter(r => r.name && r.file && inTabCategory("sop", r) && matches([r.category, r.name, r.description]));
   if (!items.length) return emptyState("No matching SOPs.");
-  return grouped(items, "category", list => list.map(sopRow).join(""));
+  if (viewOf("sop") === "list") {
+    return grouped(items, "category", list => list.map(sopRow).join(""));
+  }
+  return grouped(items, "category", list => '<div class="grid">' + list.map(sopCard).join("") + '</div>');
 }
 
+function sopCard(r) {
+  return '<article class="card">' +
+    '<h3>' + esc(r.name) + '</h3>' +
+    '<p class="small muted">Update: ' + esc(r.updated) + '</p>' +
+    (r.description ? '<p class="muted small">' + esc(r.description) + '</p>' : '') +
+    '<div class="actions"><a class="btn small outline" target="_blank" rel="noopener" href="https://drive.google.com/file/d/' +
+      encodeURIComponent(r.file) + '/view">Open SOP</a></div>' +
+    editBtn("sop", r, true) +
+  '</article>';
+}
 function sopRow(r) {
   return '<div class="row">' +
     '<a class="row-main" target="_blank" rel="noopener" href="https://drive.google.com/file/d/' +
@@ -784,10 +807,22 @@ function sopRow(r) {
 function academyList() {
   const items = appData.academy.filter(r => r.title && inTabCategory("academy", r) && matches([r.category, r.title, r.shortDesc]));
   if (!items.length) return emptyState("No matching materials.");
+  if (viewOf("academy") === "list") {
+    return grouped(items, "category", list => list.map(academyRow).join(""));
+  }
   return grouped(items, "category", list =>
     '<div class="grid two">' + list.map(academyCard).join("") + '</div>');
 }
 
+function academyRow(r) {
+  const meta = [r.difficulty, r.readingTime, r.updated ? "Update " + r.updated : ""].filter(Boolean).join(" · ");
+  return '<div class="row clickable" onclick="openDetail(\'academy\',' + r._row + ')">' +
+    '<div class="row-main"><strong>' + esc(r.title) + '</strong>' +
+      '<span class="small muted">' + esc(meta) + '</span></div>' +
+    '<span class="chev">›</span>' +
+    editBtn("academy", r) +
+  '</div>';
+}
 function academyCard(r) {
   return '<article class="card clickable" onclick="openDetail(\'academy\',' + r._row + ')">' +
     '<div class="row-between">' +
@@ -812,13 +847,23 @@ function academyCard(r) {
 
 function viewTeams() {
   const rows = appData.teams.filter(r => r.name && inTabCategory("teams", r));
-  return sectionHead(SHEET_LABELS.teams, "teams") +
+  return sectionHead(SHEET_LABELS.teams, "teams", viewToggleHtml("teams")) +
     categoryChips("teams") +
     (rows.length
-      ? grouped(rows, "department", list => '<div class="grid">' + list.map(personCard).join("") + '</div>')
+      ? (viewOf("teams") === "list"
+          ? grouped(rows, "department", list => list.map(personRow).join(""))
+          : grouped(rows, "department", list => '<div class="grid">' + list.map(personCard).join("") + '</div>'))
       : emptyState("No team data yet."));
 }
 
+function personRow(r) {
+  return '<div class="row clickable" onclick="openDetail(\'teams\',' + r._row + ')">' +
+    '<div class="row-main"><strong>' + esc(r.name) + '</strong>' +
+      '<span class="small muted">' + esc(r.position) + '</span></div>' +
+    '<span class="chev">›</span>' +
+    editBtn("teams", r) +
+  '</div>';
+}
 function personCard(r) {
   return '<div class="person clickable" onclick="openDetail(\'teams\',' + r._row + ')">' +
     (r.image
@@ -829,14 +874,14 @@ function personCard(r) {
     editBtn("teams", r, true) +
   '</div>';
 }
-/** Sapaan: nickname dari HR, kalau kosong pakai nama depan. */
+/** Greeting: nickname from HR; if empty, use the first name. */
 function greetingName() {
   return currentNickname || firstName(currentName);
 }
 
 /**
- * Waktu tamu dari teks tanggal sheet ("18 Sep" atau "18 Sep 2026").
- * Tanpa tahun, dianggap tahun ini; kalau hasilnya di masa depan, tahun lalu.
+ * Guest time from the sheet's date text ("18 Sep" or "18 Sep 2026").
+ * Without a year, the current year is assumed; if the result is in the future, last year.
  */
 function guestTime(r) {
   const m = String(r.date || "").trim().match(/^(\d{1,2})\s+([A-Za-z]{3})[a-z]*(?:\s+(\d{4}))?$/);
@@ -850,8 +895,8 @@ function guestTime(r) {
 }
 
 /**
- * Urutan tamu: tanggal (terbaru dulu, atau terlama dulu), lalu nama A-Z kalau tanggalnya sama.
- * Tanggal yang tidak terbaca (0) ikut urutan terlama.
+ * Guest order: by date (newest first, or oldest first), then name A-Z when dates are equal.
+ * Unreadable dates (0) sort as oldest.
  */
 function compareGuests(a, b, newest) {
   const byDate = newest ? guestTime(b) - guestTime(a) : guestTime(a) - guestTime(b);
@@ -859,19 +904,19 @@ function compareGuests(a, b, newest) {
   return String(a.guest).localeCompare(String(b.guest), "id", { sensitivity: "base" });
 }
 
-/** Terbaru di atas. Tanggal yang tidak terbaca ditaruh paling bawah. */
+/** Newest first. Unreadable dates go to the bottom. */
 function newestFirst(rows) {
   return rows.slice().sort((a, b) => compareGuests(a, b, true));
 }
 
-/** Potongan teks sepanjang n karakter, diberi "…" kalau dipotong. */
+/** Text cut to n characters, with "…" added when cut. */
 function clipText(text, n) {
   return text.length > n ? text.slice(0, n).trimEnd() + "…" : text;
 }
 
 /**
- * Kartu tamu di Home. Potongan catatan 50 karakter di HP dan 80 di desktop (diatur CSS).
- * Read more hanya membuka teks di tempat, tidak membuka pop-up.
+ * Guest card on Home. Note snippet is 50 characters on phones and 80 on desktop (set by CSS).
+ * Read more only expands the text in place, it does not open a pop-up.
  */
 function guestCard(r) {
   const text = String(r.description || "");
@@ -903,14 +948,14 @@ function guestCard(r) {
     '</div>' +
   '</div>';
 }
-/** Buka atau tutup teks catatan di dalam kartu. */
+/** Expand or collapse the note text inside the card. */
 function toggleGuestText(btn) {
   const card = btn.closest(".guest");
   const open = card.classList.toggle("open");
   card.querySelectorAll(".more").forEach(b => { b.innerText = open ? "Show less" : "Read more"; });
 }
 
-/** Detail tamu: foto besar dan catatan lengkap. */
+/** Guest details: large photo and full notes. */
 function openGuest(row) {
   const r = (appData.guests || []).find(x => x._row === row);
   if (!r) return toast("This data no longer exists. Refresh first.");
@@ -928,7 +973,7 @@ function closeGuest() {
   if (modal) modal.classList.add("hidden");
 }
 
-/* ---------- OUR GUESTS: halaman lengkap ---------- */
+/* ---------- OUR GUESTS: full page ---------- */
 
 function openGuestsLanding() {
   guestsLanding = true;
@@ -966,7 +1011,7 @@ function viewGuestsLanding() {
     '<div id="glList">' + guestListHtml() + '</div>';
 }
 
-/** Pilihan kategori: "Semua" plus kategori dari data. Pilihan dikirim sebagai nomor, bukan teks. */
+/** Category options: "All" plus categories from the data. The choice is sent as an index, not text. */
 function guestCategories() {
   return GUEST_CATEGORIES.slice();
 }
@@ -981,7 +1026,7 @@ function guestChips() {
     cats.map((c, i) => chip(i, c, visible.filter(r => r.category === c).length)).join("");
 }
 
-/** Tamu yang boleh dilihat, lalu dipersempit status. Dipakai daftar dan hitungan chip kategori. */
+/** Guests the user may see, then narrowed by status. Used for the list and the category chip counts. */
 function guestBaseRows() {
   const rows = appData.guests.filter(showItem);
   if (guestFilter.status === "active") return rows.filter(isActive);
@@ -1074,7 +1119,7 @@ function guestMore() {
   renderTab();
 }
 
-/* ---------- STAFF BULLETIN: halaman lengkap (kalender dan daftar) ---------- */
+/* ---------- STAFF BULLETIN: full page (calendar and list) ---------- */
 
 const BULLETIN_MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const BULLETIN_WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -1089,15 +1134,31 @@ function openBulletinLanding() {
   window.scrollTo(0, 0);
 }
 
-/** Bulletin aktif saja, terbaru di atas. Dipakai kalender dan daftar. */
+/** Active bulletins only, newest first. Used by the calendar and the list. */
 function activeBulletins() {
   return newestFirst(appData.bulletin.filter(isActive));
 }
 
-function bulletinColor(type) {
-  return BULLETIN_COLORS[type] || "neutral";
+/** Bulletin types: from the sheet, or defaults if the sheet is empty. */
+function bulletinTypeList() {
+  const rows = (appData && appData.bulletinTypes || []).filter(r => r.type);
+  return rows.length ? rows : DEFAULT_BULLETIN_TYPES;
 }
 
+function bulletinTypeNames() {
+  return bulletinTypeList().map(r => r.type);
+}
+
+function bulletinColor(type) {
+  const row = bulletinTypeList().find(r => r.type === type);
+  return row && row.color ? row.color : "var(--muted)";
+}
+
+/** Style attribute for a type color: text, border, and a faint background from the same color. */
+function bulletinStyle(type) {
+  const c = esc(bulletinColor(type));
+  return 'style="--tag:' + c + ';--tag-bg:color-mix(in srgb, ' + c + ' 16%, transparent)"';
+}
 function viewBulletinLanding() {
   return '<div class="gl-head">' +
       '<button class="ghost" type="button" onclick="showTab(\'home\')">← Back</button>' +
@@ -1111,11 +1172,10 @@ function viewBulletinLanding() {
         addBtn("bulletin", "+ Add") +
       '</div>' +
     '</div>' +
-    '<div class="bl-legend">' + BULLETIN_TYPES.map(t =>
-      '<span class="bl-tag ' + bulletinColor(t) + '">' + esc(t) + '</span>').join("") + '</div>' +
+    '<div class="bl-legend">' + bulletinTypeList().map(row =>
+      '<span class="bl-tag" ' + bulletinStyle(row.type) + '>' + esc(row.type) + '</span>').join("") + '</div>' +
     (bulletinView === "calendar" ? bulletinCalendarHtml() : bulletinListHtml());
 }
-
 function bulletinSetView(mode) {
   bulletinView = mode;
   renderTab();
@@ -1134,7 +1194,7 @@ function bulletinCalendarHtml() {
     if (iso) (byDay[iso] = byDay[iso] || []).push(r);
   });
 
-  const lead = (new Date(y, m, 1).getDay() + 6) % 7;   // minggu mulai Senin
+  const lead = (new Date(y, m, 1).getDay() + 6) % 7;   // week starts on Monday
   const days = new Date(y, m + 1, 0).getDate();
   const cells = [];
   for (let i = 0; i < lead; i++) cells.push('<span class="bc-cell bc-empty"></span>');
@@ -1142,7 +1202,7 @@ function bulletinCalendarHtml() {
     const iso = y + "-" + pad2(m + 1) + "-" + pad2(d);
     const list = byDay[iso] || [];
     const dots = Array.from(new Set(list.map(r => bulletinColor(r.type))))
-      .map(c => '<i class="bc-dot ' + c + '"></i>').join("");
+      .map(c => '<i class="bc-dot" style="--tag:' + esc(c) + '"></i>').join("");
     const classes = "bc-cell" + (iso === todayIso ? " bc-today" : "") + (iso === bulletinDay ? " bc-picked" : "");
     cells.push('<button type="button" class="' + classes + '" onclick="bulletinPick(\'' + iso + '\')">' +
       '<span>' + d + '</span><span class="bc-dots">' + dots + '</span></button>');
@@ -1194,14 +1254,13 @@ function bulletinMore() {
   renderTab();
 }
 
-/** Satu item bulletin, dipakai di kalender (per hari) dan di daftar. Read more hanya membuka teks di tempat. */
+/** One bulletin item, used in the calendar (per day) and in the list. Read more only expands the text in place. */
 function bulletinItem(r) {
   const text = String(r.description || "");
   const more = text.length > 80;
-  const color = bulletinColor(r.type);
-  return '<div class="bl-item clickable ' + color + '" onclick="openDetail(\'bulletin\',' + r._row + ')">' +
+  return '<div class="bl-item clickable" ' + bulletinStyle(r.type) + ' onclick="openDetail(\'bulletin\',' + r._row + ')">' +
     (r.image ? photoBtn(r.image, '<img class="bl-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">') : '') +
-    '<div class="bl-meta"><span class="bl-tag ' + color + '">' + esc(r.type || "Info") + '</span>' +
+    '<div class="bl-meta"><span class="bl-tag" ' + bulletinStyle(r.type) + '>' + esc(r.type || "Info") + '</span>' +
       '<span class="small muted">' + esc(r.date) + '</span></div>' +
     '<div class="note-title">' + esc(r.title) + '</div>' +
     (text
@@ -1212,21 +1271,20 @@ function bulletinItem(r) {
       editBtn("bulletin", r) +
     '</div>' +
   '</div>';
-}
-function toggleBulletinText(btn) {
+}function toggleBulletinText(btn) {
   const item = btn.closest(".bl-item");
   const open = item.classList.toggle("open");
   btn.innerText = open ? "Show less" : "Read more";
 }
 
-/* ---------- FOTO & DETAIL ---------- */
+/* ---------- PHOTO & DETAIL ---------- */
 
 function imgUrlLarge(id) {
   if (/^https?:\/\//.test(id)) return id;
   return "https://drive.google.com/thumbnail?id=" + encodeURIComponent(id) + "&sz=w1600";
 }
 
-/** Foto yang bisa diperbesar. Klik foto tidak ikut membuka kartu di belakangnya. */
+/** Photo that can be enlarged. Clicking the photo does not also open the card behind it. */
 function photoBtn(id, imgHtml) {
   return '<button class="photo-btn" type="button" data-photo="' + esc(id) + '" onclick="event.stopPropagation();openPhoto(this.dataset.photo)">' + imgHtml + '</button>';
 }
@@ -1246,7 +1304,7 @@ function closePhoto() {
   document.getElementById("photoModal").classList.add("hidden");
 }
 
-/* Isi popup info per sheet. meta: [label, kolom, awalan]. */
+/* Info popup contents per sheet. meta: [label, column, prefix]. */
 const DETAIL_CONFIG = {
   food:     { label: "Food Bible", title: "name", meta: [["Category", "category"], ["Price", "price", "Rp "], ["Allergens", "allergens"]], text: "description", links: [] },
   beverage: { label: "Beverage Bible", title: "name", meta: [["Category", "category"], ["Price", "price", "Rp "], ["Allergens", "allergens"]], text: "description", links: [] },
@@ -1296,8 +1354,8 @@ function viewAbout() {
 }
 
 /**
- * Item aktif tampil biasa. Item nonaktif (hanya ada untuk editor) dilipat
- * dalam satu bagian tertutup supaya daftar utama tidak panjang.
+ * Active items show normally. Inactive items (editors only) are folded
+ * into one collapsed section so the main list stays short.
  */
 function listWithInactive(rows, renderItem) {
   const active = rows.filter(isActive);
@@ -1309,23 +1367,23 @@ function listWithInactive(rows, renderItem) {
     inactive.map(renderItem).join("") + '</details>';
 }
 
-/* ---------- TOMBOL EDIT / TAMBAH ---------- */
+/* ---------- EDIT / ADD BUTTONS ---------- */
 
-/** Satu definisi "boleh edit": dari backend. Dipakai semua tombol tambah/edit/hapus. */
+/** One definition of "can edit": from the backend. Used by all add/edit/delete buttons. */
 function canEdit() {
   return currentCanEdit;
 }
 
 /**
- * Item yang tampil: staff hanya lihat yang ACTIVE, editor lihat semua
- * supaya bisa mengaktifkan lagi item yang nonaktif.
+ * Items shown: staff only see ACTIVE ones, editors see all
+ * so they can reactivate inactive items.
  */
-/** Tanggal baris (format sheet, misalnya "20 Oct 2026") sama dengan hari ini? */
+/** Is the row date (sheet format, for example "20 Oct 2026") today? */
 function isToday(sheetDate) {
   return isoFromSheetDate(sheetDate) === isoDate(new Date());
 }
 
-/** Satu definisi "aktif". Semua pengecekan status lewat sini. */
+/** One definition of "active". All status checks go through here. */
 function isActive(rec) {
   return rec.status === "ACTIVE";
 }
@@ -1338,7 +1396,7 @@ function inactiveClass(rec) {
   return isActive(rec) ? "" : " is-inactive";
 }
 
-/** Label "Nonaktif" hanya untuk editor. Staff tidak pernah melihat item nonaktif. */
+/** The "Inactive" label is for editors only. Staff never see inactive items. */
 function statusBadge(rec) {
   if (!currentCanEdit || isActive(rec)) return "";
   return ' <span class="badge off">Inactive</span>';
@@ -1404,10 +1462,11 @@ function setFormBusy(busy, activeId, label) {
   if (!busy) ["editSave", "editDelete"].forEach(id => setBusy(document.getElementById(id), false));
 }
 
-/* ---------- NILAI DEFAULT & PILIHAN ---------- */
+/* ---------- DEFAULT VALUES & OPTIONS ---------- */
 
-/** Nilai awal saat tambah baru. */
+/** Initial value when adding a new row. */
 function defaultValue(sheetKey, f) {
+  if (f.dynamicOptions) return f.dynamicOptions()[0] || "";
   if (f.input === "date" || f.input === "today") return formatSheetDate(new Date());
   if (f.input === "phone") return "62";
   if (f.options) return f.options[0];
@@ -1418,7 +1477,7 @@ function defaultValue(sheetKey, f) {
   return "";
 }
 
-/** Nilai unik dari sheet, dipakai sebagai pilihan (satu sumber: data itu sendiri). */
+/** Unique values from the sheet, used as options (one source: the data itself). */
 function distinctValues(sheetKey, key) {
   const seen = [];
   (appData[sheetKey] || []).forEach(r => {
@@ -1429,6 +1488,7 @@ function distinctValues(sheetKey, key) {
 }
 
 function optionList(sheetKey, f) {
+  if (f.dynamicOptions) return f.dynamicOptions();
   const list = (f.options || []).slice();
   if (f.src) {
     distinctValues(sheetKey, f.key).forEach(v => {
@@ -1438,7 +1498,7 @@ function optionList(sheetKey, f) {
   return list;
 }
 
-/* ---------- INPUT PER TIPE ---------- */
+/* ---------- INPUT BY TYPE ---------- */
 
 function fieldHtml(sheetKey, f, value) {
   const v = value == null ? "" : String(value);
@@ -1462,10 +1522,10 @@ function fieldInput(sheetKey, f, v) {
   return '<input class="input" type="text" ' + key + ' value="' + esc(v) + '">';
 }
 
-/** Dropdown. Kalau src, ada "+ New…" yang memunculkan kotak isian. */
+/** Dropdown. If src, a "+ New…" option shows a text box. */
 function selectHtml(sheetKey, f, v) {
   let opts = optionList(sheetKey, f);
-  if (v && opts.indexOf(v) === -1) opts = [v].concat(opts);   // nilai lama tetap tampil apa adanya
+  if (v && opts.indexOf(v) === -1) opts = [v].concat(opts);   // old value still shown as is
 
   const isNew = f.src && !v && opts.length === 0;
   const blank = !v && opts.length > 0 ? '<option value="" selected>— choose —</option>' : '';
@@ -1477,7 +1537,7 @@ function selectHtml(sheetKey, f, v) {
     (f.src ? '<input class="input new-input' + (isNew ? '' : ' hidden') + '" type="text" data-new-for="' + f.key + '" placeholder="Type a new value">' : '');
 }
 
-/** Checkbox alergen. Nilai lama yang tidak ada di daftar tetap ditampilkan dan dicentang. */
+/** Allergen checkboxes. Old values not in the list are still shown and checked. */
 function checksHtml(f, v) {
   const current = v.split(",").map(s => s.trim()).filter(Boolean);
   const all = ALLERGEN_OPTIONS.concat(current.filter(x => ALLERGEN_OPTIONS.indexOf(x) === -1));
@@ -1487,7 +1547,7 @@ function checksHtml(f, v) {
   ).join("") + '</div>';
 }
 
-/** Kotak "+ New…" muncul hanya saat dipilih. */
+/** The "+ New…" box appears only when selected. */
 function onFormChange(e) {
   if (e.target.matches && e.target.matches('input[type="file"][data-file]')) {
     onFileChosen(e.target);
@@ -1502,11 +1562,11 @@ function onFormChange(e) {
   if (isNew) box.focus();
 }
 
-/* ---------- BACA FORM ---------- */
+/* ---------- READ FORM ---------- */
 
 /**
- * Isi form dibaca ulang. Kolom yang tidak diubah (readonly, atau tanggal yang formatnya lama
- * dan tidak bisa dibaca date picker) memakai nilai asli, supaya tidak ada yang kosong diam-diam.
+ * Form contents are read back. Columns that were not changed (readonly, or dates in an old format
+ * that the date picker cannot read) keep their original value, so nothing silently becomes empty.
  */
 function readForm() {
   const sheetKey = formState.sheetKey;
@@ -1519,7 +1579,7 @@ function readForm() {
   return values;
 }
 
-/** Balikin undefined kalau kolom ini sebaiknya pakai nilai asli. */
+/** Return undefined when this column should keep its original value. */
 function readValue(f) {
   if (f.input === "allergens") {
     return Array.from(document.querySelectorAll('input[data-check="' + f.key + '"]:checked'))
@@ -1600,10 +1660,10 @@ async function deleteForm() {
 
 const MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-/** Nama bulan yang boleh ada di sheet: Inggris atau Indonesia. Hanya untuk membaca, penulisan tetap Inggris. */
+/** Month names allowed in the sheet: English or Indonesian. For reading only; writing stays English. */
 const MONTH_ALIASES = { jan: 0, feb: 1, mar: 2, apr: 3, mei: 4, may: 4, jun: 5, jul: 6, agu: 7, aug: 7, sep: 8, okt: 9, oct: 9, nov: 10, des: 11, dec: 11 };
 
-/** Indeks bulan (0-11) dari nama di sheet. -1 kalau tidak dikenali. */
+/** Month index (0-11) from a sheet name. -1 if not recognized. */
 function monthIndex(name) {
   const k = String(name || "").toLowerCase();
   return Object.prototype.hasOwnProperty.call(MONTH_ALIASES, k) ? MONTH_ALIASES[k] : -1;
@@ -1613,17 +1673,17 @@ function pad2(n) {
   return String(n).padStart(2, "0");
 }
 
-/** Tanggal dalam format YYYY-MM-DD (untuk perbandingan). */
+/** Date in YYYY-MM-DD format (for comparison). */
 function isoDate(d) {
   return d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
 }
 
-/** Format yang dipakai sheet: "5 Oct 2026". */
+/** The format the sheet uses: "5 Oct 2026". */
 function formatSheetDate(d) {
   return d.getDate() + " " + MONTHS_EN[d.getMonth()] + " " + d.getFullYear();
 }
 
-/** Ubah "5 Oct 2026" jadi "2026-10-05" untuk date picker. Kosong kalau formatnya tidak dikenali. */
+/** Convert "5 Oct 2026" to "2026-10-05" for the date picker. Empty if the format is not recognized. */
 function isoFromSheetDate(v) {
   const m = String(v || "").trim().match(/^(\d{1,2}) ([A-Za-z]{3})[a-z]* (\d{4})$/);
   if (!m) return "";
@@ -1632,7 +1692,7 @@ function isoFromSheetDate(v) {
   return m[3] + "-" + pad2(mi + 1) + "-" + pad2(Number(m[1]));
 }
 
-/* ---------- UPLOAD FOTO & PDF ---------- */
+/* ---------- PHOTO & PDF UPLOAD ---------- */
 
 function uploadHtml(f, v) {
   const isPhoto = f.input === "photo";
@@ -1656,7 +1716,7 @@ function findField(sheetKey, key) {
   return EDIT_FIELDS[sheetKey].find(f => f.key === key);
 }
 
-/** Foto dikecilkan di browser dulu (maks 1000 px, JPEG), supaya ringan diunggah. */
+/** Photos are shrunk in the browser first (max 1000 px, JPEG), so uploads are light. */
 async function onFileChosen(input) {
   const f = findField(formState.sheetKey, input.dataset.file);
   const file = input.files && input.files[0];
@@ -1768,7 +1828,7 @@ function groupBy(items, field) {
   return groups;
 }
 
-/** Terima ID file Drive, atau link gambar langsung (misalnya dari HR). */
+/** Accepts a Drive file ID, or a direct image link (for example from HR). */
 function imgUrl(id) {
   if (/^https?:\/\//.test(id)) return id;
   return "https://drive.google.com/thumbnail?id=" + encodeURIComponent(id) + "&sz=w400";
