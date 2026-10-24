@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.34.2";
+const APP_VERSION = "2.35.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -79,14 +79,6 @@ const EDIT_FIELDS = {
     { key: "description", label: "Description", input: "multi" },
     { key: "file",        label: "SOP file (PDF)", input: "pdf" },
     { key: "updated",     label: "Last updated", input: "today" }
-  ],
-  teams: [
-    { key: "department",  label: "Department", src: true },
-    { key: "position",    label: "Position", src: true },
-    { key: "name",        label: "Name" },
-    { key: "image",       label: "Photo", input: "photo" },
-    { key: "phone",       label: "WhatsApp number", input: "phone" },
-    { key: "order", label: "Order (set by Rearrange in Our Teams)", input: "readonly" }
   ],
   about: [
     { key: "section",     label: "Section", options: SECTION_OPTIONS, src: true },
@@ -892,10 +884,13 @@ function cancelRearrange() {
 
 /** Kirim urutan kartu yang sekarang (dari atas ke bawah) ke sheet. */
 async function saveRearrange() {
-  const rows = Array.from(document.querySelectorAll("#app .person[data-row]")).map(el => Number(el.dataset.row));
+  const niks = Array.from(document.querySelectorAll("#app .person[data-row]")).map(el => {
+    const r = appData.teams.find(x => x._row === Number(el.dataset.row));
+    return r ? r.nik : "";
+  }).filter(Boolean);
   rearranging = false;
   try {
-    await api("saveOrder", [sessionToken, "teams", rows]);
+    await api("saveOrder", [sessionToken, niks]);
     toast("Order saved.");
   } catch (e) {
     if (isSessionExpired(e)) {
@@ -1540,12 +1535,16 @@ function sectionHead(title, sheetKey, extra) {
     '<div class="section-actions">' + (extra || "") + addBtn(sheetKey, "+ Add") + '</div></div>';
 }
 
+/* Data that comes from HR, not from a Staff Hub sheet: shown read-only (no Add or Edit). */
+const HR_SOURCED = ["teams"];
+
 function addBtn(sheetKey, label) {
-  if (!canEdit()) return "";
+  if (!canEdit() || HR_SOURCED.indexOf(sheetKey) !== -1) return "";
   return '<button class="add-btn" type="button" onclick="openAdd(\'' + sheetKey + '\')">' + esc(label) + '</button>';
 }
 
 function editBtn(sheetKey, rec, corner) {
+  if (HR_SOURCED.indexOf(sheetKey) !== -1) return "";
   if (!canEdit() || !rec || !rec._row) return "";
   return '<button class="edit-btn' + (corner ? ' corner-edit' : '') + '" type="button" onclick="event.stopPropagation();closeDetail();openEdit(\'' + sheetKey + '\',' + rec._row + ')">Edit</button>';
 }/* ---------- FORM (tambah, edit, hapus) ---------- */
