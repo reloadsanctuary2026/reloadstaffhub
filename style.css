@@ -750,3 +750,7 @@ body { overflow-wrap: anywhere; }
 
 /* Materials: tombol tambah PDF di form */
 .materials-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+
+/* Rearrange Our Teams */
+.person-placeholder { border: 1px dashed var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
+.rearranging .person { cursor: grab; touch-action: none; outline: 1px dashed rgba(170, 118, 85, 0.5); outline-offset: 4px; }

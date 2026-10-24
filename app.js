@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.33.0";
+const APP_VERSION = "2.34.1";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -85,7 +85,8 @@ const EDIT_FIELDS = {
     { key: "position",    label: "Position", src: true },
     { key: "name",        label: "Name" },
     { key: "image",       label: "Photo", input: "photo" },
-    { key: "phone",       label: "WhatsApp number", input: "phone" }
+    { key: "phone",       label: "WhatsApp number", input: "phone" },
+    { key: "order", label: "Order (set by Rearrange in Our Teams)", input: "readonly" }
   ],
   about: [
     { key: "section",     label: "Section", options: SECTION_OPTIONS, src: true },
@@ -238,14 +239,26 @@ window.addEventListener("load", async function () {
     if (e.target.id === "detailModal") closeDetail();
   });
   document.getElementById("photoModal").addEventListener("click", closePhoto);
+  const appEl = document.getElementById("app");
+  appEl.addEventListener("pointerdown", onRearrangePointerDown);
+  appEl.addEventListener("click", onAppClickCapture, true);
+  window.addEventListener("pointermove", onRearrangePointerMove);
+  window.addEventListener("pointerup", onRearrangePointerUp);
+  window.addEventListener("pointercancel", onRearrangePointerUp);
   document.getElementById("guestModal").addEventListener("click", function (e) {
     if (e.target.id === "guestModal") closeGuest();
   });
   document.getElementById("editSave").addEventListener("click", saveForm);
   document.getElementById("editDelete").addEventListener("click", deleteForm);
   document.getElementById("editForm").addEventListener("change", onFormChange);
-  document.getElementById("editModal").addEventListener("click", function (e) {
-    if (e.target.id === "editModal") closeForm();
+  let backdropDown = false;
+  const editModalEl = document.getElementById("editModal");
+  editModalEl.addEventListener("pointerdown", function (e) {
+    backdropDown = e.target.id === "editModal";
+  });
+  editModalEl.addEventListener("click", function (e) {
+    if (e.target.id === "editModal" && backdropDown) closeForm();
+    backdropDown = false;
   });
 
   if (!sessionToken) return showLogin();
@@ -533,6 +546,7 @@ function renderTabbar() {
 
 function showTab(key) {
   activeTab = key;
+  rearranging = false;
   guestsLanding = false;
   bulletinLanding = false;
   searchText = "";
@@ -846,17 +860,122 @@ function academyCard(r) {
 }
 /* ---------- TEAMS / GUESTS / ABOUT ---------- */
 
+/* Urutan Our Teams: kolom Order di sheet. Yang kosong ditaruh paling bawah. */
+function orderKey(r) {
+  const n = Number(r.order);
+  return r.order !== "" && r.order != null && !isNaN(n) ? n : 1e9;
+}
+
+/* ---------- REARRANGE (Our Teams, hanya editor) ---------- */
+
+let rearranging = false;
+let dragState = null;
+let suppressClick = false;
+
+function teamsActions() {
+  if (!canEdit() || viewOf("teams") !== "grid") return "";
+  return rearranging
+    ? '<button class="ghost small" type="button" onclick="saveRearrange()">Done</button>' +
+      '<button class="ghost small" type="button" onclick="cancelRearrange()">Cancel</button>'
+    : '<button class="ghost small" type="button" onclick="startRearrange()">⇅ Rearrange</button>';
+}
+
+function startRearrange() {
+  rearranging = true;
+  renderTab();
+}
+
+function cancelRearrange() {
+  rearranging = false;
+  renderTab();
+}
+
+/** Kirim urutan kartu yang sekarang (dari atas ke bawah) ke sheet. */
+async function saveRearrange() {
+  const rows = Array.from(document.querySelectorAll("#app .person[data-row]")).map(el => Number(el.dataset.row));
+  rearranging = false;
+  try {
+    await api("saveOrder", [sessionToken, "teams", rows]);
+    toast("Order saved.");
+  } catch (e) {
+    if (isSessionExpired(e)) {
+      handleApiError(e);
+      return;
+    }
+    toast(e.message);
+  }
+  refreshSheet("teams");
+}
+
+function onRearrangePointerDown(e) {
+  if (!rearranging || !canEdit() || activeTab !== "teams" || viewOf("teams") !== "grid") return;
+  const card = e.target.closest(".person[data-row]");
+  if (!card || e.target.closest("button, a")) return;
+  const rect = card.getBoundingClientRect();
+  const ph = document.createElement("div");
+  ph.className = "person-placeholder";
+  ph.style.width = rect.width + "px";
+  ph.style.height = rect.height + "px";
+  card.parentNode.insertBefore(ph, card);
+  dragState = { card: card, ph: ph, group: card.parentNode, offX: e.clientX - rect.left, offY: e.clientY - rect.top };
+  Object.assign(card.style, { position: "fixed", left: rect.left + "px", top: rect.top + "px", width: rect.width + "px", zIndex: "50", pointerEvents: "none" });
+  e.preventDefault();
+}
+
+function onRearrangePointerMove(e) {
+  if (!dragState) return;
+  const d = dragState;
+  d.card.style.left = (e.clientX - d.offX) + "px";
+  d.card.style.top = (e.clientY - d.offY) + "px";
+  let best = null;
+  let bestDist = Infinity;
+  Array.from(d.group.querySelectorAll(":scope > .person[data-row]")).forEach(function (el) {
+    if (el === d.card) return;
+    const b = el.getBoundingClientRect();
+    const dist = Math.hypot(e.clientX - (b.left + b.width / 2), e.clientY - (b.top + b.height / 2));
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = el;
+    }
+  });
+  if (!best) return;
+  const b = best.getBoundingClientRect();
+  const before = e.clientY < b.top + b.height / 2 || (e.clientY < b.bottom && e.clientX < b.left + b.width / 2);
+  d.group.insertBefore(d.ph, before ? best : best.nextSibling);
+}
+
+function onRearrangePointerUp() {
+  if (!dragState) return;
+  const d = dragState;
+  dragState = null;
+  Object.assign(d.card.style, { position: "", left: "", top: "", width: "", zIndex: "", pointerEvents: "" });
+  d.ph.replaceWith(d.card);
+  suppressClick = true;
+}
+
+/* Saat Rearrange, klik kartu tidak membuka popup. Klik setelah drag juga diabaikan. */
+function onAppClickCapture(e) {
+  const onCard = e.target.closest(".person");
+  if (onCard && (suppressClick || rearranging)) {
+    e.stopPropagation();
+    e.preventDefault();
+  }
+  suppressClick = false;
+}
+
 function viewTeams() {
-  const rows = appData.teams.filter(r => r.name && inTabCategory("teams", r));
-  return sectionHead(SHEET_LABELS.teams, "teams", viewToggleHtml("teams")) +
+  const rows = appData.teams.filter(r => r.name && inTabCategory("teams", r)).slice().sort((x, y) => orderKey(x) - orderKey(y));
+  return sectionHead(SHEET_LABELS.teams, "teams", viewToggleHtml("teams") + teamsActions()) +
     categoryChips("teams") +
+    '<div class="' + (rearranging ? "rearranging" : "") + '">' +
+    (rearranging ? '<p class="muted small">Drag a card to move it inside its department. Tap Done to save.</p>' : "") +
     (rows.length
       ? (viewOf("teams") === "list"
           ? grouped(rows, "department", list => list.map(personRow).join(""))
           : grouped(rows, "department", list => '<div class="grid">' + list.map(personCard).join("") + '</div>'))
-      : emptyState("No team data yet."));
+      : emptyState("No team data yet.")) +
+    '</div>';
 }
-
 function personRow(r) {
   return '<div class="row clickable" onclick="openDetail(\'teams\',' + r._row + ')">' +
     '<div class="row-main"><strong>' + esc(r.name) + '</strong>' +
@@ -866,7 +985,7 @@ function personRow(r) {
   '</div>';
 }
 function personCard(r) {
-  return '<div class="person clickable" onclick="openDetail(\'teams\',' + r._row + ')">' +
+  return '<div class="person clickable" data-row="' + r._row + '" onclick="openDetail(\'teams\',' + r._row + ')">' +
     (r.image
       ? photoBtn(r.image, '<img class="person-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">')
       : '<div class="person-photo initials">' + esc(initials(r.name)) + '</div>') +
@@ -1428,7 +1547,8 @@ function openAdd(sheetKey, presetDate) {
     if (dateField) blank[dateField.key] = formatSheetDate(new Date(presetDate + "T00:00:00"));
   }
   formState = { mode: "add", sheetKey: sheetKey, row: null, original: blank };
-  showForm("Add " + SHEET_LABELS[sheetKey], blank, false);
+  const restored = takeDraft("add", sheetKey, null);
+  showForm("Add " + SHEET_LABELS[sheetKey], restored || blank, false);
 }
 
 function openEdit(sheetKey, row) {
@@ -1437,7 +1557,8 @@ function openEdit(sheetKey, row) {
   if (!rec) return toast("This data no longer exists. Refresh first.");
 
   formState = { mode: "edit", sheetKey: sheetKey, row: row, original: rec };
-  showForm("Edit " + SHEET_LABELS[sheetKey], rec, true);
+  const restored = takeDraft("edit", sheetKey, row);
+  showForm("Edit " + SHEET_LABELS[sheetKey], restored || rec, true);
 }
 
 function showForm(title, values, canDelete) {
@@ -1451,7 +1572,36 @@ function showForm(title, values, canDelete) {
   document.getElementById("editModal").classList.remove("hidden");
 }
 
-function closeForm() {
+let formDraft = null;     // isi form yang belum disimpan, kalau form tertutup
+let formUploading = false;
+
+/** Isi form yang sekarang, untuk disimpan sementara. Null kalau tidak bisa dibaca. */
+function currentDraft() {
+  try {
+    return { sheetKey: formState.sheetKey, mode: formState.mode, row: formState.row, values: readForm() };
+  } catch (e) {
+    return null;
+  }
+}
+
+/** Ambil draft yang cocok dengan form yang mau dibuka, lalu hapus draft-nya. */
+function takeDraft(mode, sheetKey, row) {
+  const d = formDraft;
+  formDraft = null;
+  if (d && d.mode === mode && d.sheetKey === sheetKey && d.row === row) {
+    toast("Restored your unsaved changes.");
+    return d.values;
+  }
+  return null;
+}
+
+/** discard = true kalau form ditutup karena sudah disimpan (tidak perlu draft). */
+function closeForm(discard) {
+  if (formUploading) {
+    toast("Still uploading. Please wait.");
+    return;
+  }
+  if (formState && !discard) formDraft = currentDraft();
   formState = null;
   setFormBusy(false);
   const modal = document.getElementById("editModal");
@@ -1520,6 +1670,7 @@ function fieldInput(sheetKey, f, v) {
   if (f.input === "phone") return '<input class="input" type="tel" inputmode="numeric" ' + key + ' value="' + esc(v) + '" placeholder="628...">';
   if (f.input === "photo" || f.input === "pdf") return uploadHtml(f, v);
   if (f.input === "materials") return materialsHtml(f, v);
+  if (f.input === "readonly") return '<input class="input" type="text" readonly ' + key + ' value="' + esc(v) + '">';
   if (f.input === "url") return '<input class="input" type="url" ' + key + ' value="' + esc(v) + '" placeholder="https://...">';
   if (f.input === "multi") return '<textarea class="input" rows="4" ' + key + '>' + esc(v) + '</textarea>';
   if (f.options || f.src) return selectHtml(sheetKey, f, v);
@@ -1632,7 +1783,7 @@ async function saveForm() {
       const res = await api("updateRow", [sessionToken, sheetKey, row, oldValues, newValues]);
       toast(res.changed ? "Saved." : "No changes.");
     }
-    closeForm();
+    closeForm(true);
     refreshSheet(sheetKey);
   } catch (e) {
     formError(e);
@@ -1653,7 +1804,7 @@ async function deleteForm() {
   try {
     await api("deleteRow", [sessionToken, sheetKey, row, oldValues]);
     toast("Deleted.");
-    closeForm();
+    closeForm(true);
     refreshSheet(sheetKey);
   } catch (e) {
     formError(e);
@@ -1809,6 +1960,7 @@ async function onFileChosen(input) {
   }
 
   setFormBusy(true);
+  formUploading = true;
   status.innerHTML = '<span class="mini-spinner"></span>Uploading...';
   try {
     let base64, mime, name;
@@ -1840,6 +1992,7 @@ async function onFileChosen(input) {
     }
     status.innerText = e.message;
   } finally {
+    formUploading = false;
     setFormBusy(false);
   }
 }
