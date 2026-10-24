@@ -4,12 +4,13 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.39.0";
+const APP_VERSION = "2.40.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
 const TABS = [
   { key: "home",     label: "Home", icon: HOME_ICON },
+  { key: "myupsell", label: "My Upsell" },
   { key: "tracker",  label: "Upsell Tracker", editorsOnly: true },
   { key: "food",     label: "Food Bible" },
   { key: "beverage", label: "Beverage Bible" },
@@ -545,6 +546,7 @@ function renderTabbar() {
 
 function showTab(key) {
   activeTab = key;
+  if (key === "myupsell") myUpsell = { dates: null, loading: false, date: "", rowsDate: "", rows: null };   // reload, so new saves show up
   rearranging = false;
   guestsLanding = false;
   bulletinLanding = false;
@@ -584,6 +586,7 @@ function renderActiveView() {
   else if (activeTab === "academy")  html = viewSearchable("academy");
   else if (activeTab === "about")    html = viewAbout();
   else if (activeTab === "tracker")  html = viewTracker();
+  else if (activeTab === "myupsell") html = viewMyUpsell();
 
   return html;
 }

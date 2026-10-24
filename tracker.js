@@ -200,27 +200,27 @@ function viewTracker() {
   const items = tracker.date ? challengeFor(tracker.date) : [];
 
   let html = '<div class="page-heading"><h2>Upsell Tracker</h2>' +
-    '<p>Lihat siapa yang sudah menjual menu tantangan. Hasil dibuat dari file yang diupload dan tidak disimpan.</p></div>' +
+    '<p>See who has sold the challenge items. Results are built from the uploaded files and are not saved.</p></div>' +
     '<div class="tracker-steps">' +
-    '<label class="tracker-step">Tanggal<input type="date" class="input" value="' + esc(tracker.date) + '" onchange="onTrackerDate(this.value)"></label>' +
-    '<label class="tracker-step">Laporan penjualan (.xlsx)<input type="file" accept=".xlsx" onchange="onTrackerSales(this)">' +
-      '<small>' + esc(tracker.salesName || "Belum ada file") + (tracker.lines ? " · " + dates.length + " hari, " + tracker.lines.length + " baris" : "") + '</small></label>' +
-    '<label class="tracker-step">Roster / section board (.pdf, opsional)<input type="file" accept=".pdf" onchange="onTrackerRoster(this)">' +
-      '<small>' + esc(tracker.rosterName || "Belum ada file. Tanpa roster, hanya staff yang menjual yang ditampilkan.") + '</small></label>' +
+    '<label class="tracker-step">Date<input type="date" class="input" value="' + esc(tracker.date) + '" onchange="onTrackerDate(this.value)"></label>' +
+    '<label class="tracker-step">Sales report (.xlsx)<input type="file" accept=".xlsx" onchange="onTrackerSales(this)">' +
+      '<small>' + esc(tracker.salesName || "No file yet") + (tracker.lines ? " · " + dates.length + " days, " + tracker.lines.length + " rows" : "") + '</small></label>' +
+    '<label class="tracker-step">Roster / section board (.pdf, optional)<input type="file" accept=".pdf" onchange="onTrackerRoster(this)">' +
+      '<small>' + esc(tracker.rosterName || "No file yet. Without a roster, only staff who sold are shown.") + '</small></label>' +
     '</div>';
 
   if (tracker.busy) return html + '<div class="empty">' + esc(tracker.busy) + '</div>';
-  if (!tracker.lines) return html + '<div class="empty">Upload laporan penjualan untuk mulai.</div>';
+  if (!tracker.lines) return html + '<div class="empty">Upload the sales report to start.</div>';
 
-  html += '<div class="tracker-card"><strong>Menu tantangan tanggal ini</strong>' +
+  html += '<div class="tracker-card"><strong>Challenge items for this date</strong>' +
     (items.length
       ? '<div class="tracker-items">' + items.map(it =>
           '<span class="tracker-item">' + esc(it.item) + ' <small>target ' + it.target + ' ' + esc(it.unit) + '</small></span>').join("") + '</div>'
-      : '<p class="muted small">Belum ada daftar tantangan untuk tanggal ini di tab 11_UpsellToday.</p>') +
+      : '<p class="muted small">No challenge list for this date in tab 11_UpsellToday yet.</p>') +
     '</div>';
 
   if (!items.length) return html;
-  if (!tracker.staff) return html + '<div class="empty">Memuat daftar staff…</div>';
+  if (!tracker.staff) return html + '<div class="empty">Loading staff list…</div>';
 
   const res = trackerResults(tracker.date, items);
   const onDuty = tracker.roster ? onDutyNiks(tracker.staff, tracker.roster) : [];
@@ -241,43 +241,46 @@ function viewTracker() {
   const soldCount = rows.filter(r => r.total > 0).length;
 
   html += '<div class="tracker-summary">' +
-    '<div><strong>' + soldCount + '</strong><span>sudah menjual</span></div>' +
-    (tracker.roster ? '<div><strong>' + rows.filter(r => r.total === 0).length + '</strong><span>belum menjual</span></div>' : '') +
+    '<div><strong>' + soldCount + '</strong><span>sold</span></div>' +
+    (tracker.roster ? '<div><strong>' + rows.filter(r => r.total === 0).length + '</strong><span>not sold yet</span></div>' : '') +
     items.map(it => '<div><strong>' + rows.reduce((a, r) => a + (r.items[it.item] || 0), 0) + '</strong><span>' + esc(it.item) + '</span></div>').join("") +
     '</div>';
 
   if (unlinkedCount) {
-    html += '<div class="tracker-warn">' + unlinkedCount + ' nama POS belum terhubung ke staff, jadi hasil ini belum lengkap. Hubungkan di bawah tabel.</div>';
+    html += '<div class="tracker-warn">' + unlinkedCount + ' POS name(s) not linked to staff yet, so these results are incomplete. Link them below the table.</div>';
   }
+  html += '<div class="tracker-save"><button class="button-primary" type="button" onclick="saveTrackerDay()">Save results for this day</button>' +
+    '<small class="muted">Staff can then see their own items and targets in My Upsell.</small></div>';
+
   html += '<div class="tracker-filter">' +
-    '<button class="' + (tracker.filter === "all" ? "button-primary" : "button-secondary") + '" type="button" onclick="setTrackerFilter(\'all\')">Semua</button>' +
-    '<button class="' + (tracker.filter === "sold" ? "button-primary" : "button-secondary") + '" type="button" onclick="setTrackerFilter(\'sold\')">Sudah menjual</button>' +
-    (tracker.roster ? '<button class="' + (tracker.filter === "none" ? "button-primary" : "button-secondary") + '" type="button" onclick="setTrackerFilter(\'none\')">Belum menjual</button>' : '') +
+    '<button class="' + (tracker.filter === "all" ? "button-primary" : "button-secondary") + '" type="button" onclick="setTrackerFilter(\'all\')">All</button>' +
+    '<button class="' + (tracker.filter === "sold" ? "button-primary" : "button-secondary") + '" type="button" onclick="setTrackerFilter(\'sold\')">Sold</button>' +
+    (tracker.roster ? '<button class="' + (tracker.filter === "none" ? "button-primary" : "button-secondary") + '" type="button" onclick="setTrackerFilter(\'none\')">Not sold yet</button>' : '') +
     '</div>';
 
-  html += '<div class="tracker-table"><table><thead><tr><th>Staff</th><th>Status</th><th>Menu tantangan</th><th class="numeric">Jumlah</th></tr></thead><tbody>' +
+  html += '<div class="tracker-table"><table><thead><tr><th>Staff</th><th>Status</th><th>Challenge items</th><th class="numeric">Total</th></tr></thead><tbody>' +
     (shown.length ? shown.map(function (r) {
       const chips = Object.keys(r.items).map(k => '<span class="tracker-chip">' + esc(k) + ' <b>' + r.items[k] + '</b></span>').join("");
       return '<tr><td><strong>' + esc(r.name) + '</strong>' + (r.pos.length ? '<br><small class="muted">POS: ' + esc(r.pos.join(", ")) + '</small>' : '') + '</td>' +
-        '<td>' + (r.total > 0 ? '<span class="badge ok">Sudah menjual</span>' : '<span class="badge off">Belum menjual</span>') +
-        (r.onRoster || !tracker.roster ? '' : '<br><small class="muted">tidak di roster</small>') + '</td>' +
+        '<td>' + (r.total > 0 ? '<span class="badge ok">Sold</span>' : '<span class="badge off">Not sold yet</span>') +
+        (r.onRoster || !tracker.roster ? '' : '<br><small class="muted">not on roster</small>') + '</td>' +
         '<td>' + (chips || '<span class="muted">—</span>') + '</td>' +
         '<td class="numeric">' + r.total + '</td></tr>';
-    }).join("") : '<tr><td colspan="4" class="muted">Tidak ada data untuk filter ini.</td></tr>') +
+    }).join("") : '<tr><td colspan="4" class="muted">No data for this filter.</td></tr>') +
     '</tbody></table></div>';
 
   const unlinkedNames = Object.keys(res.unlinked);
   tracker.unlinkedNames = unlinkedNames;
   if (unlinkedNames.length) {
-    html += '<div class="tracker-card tracker-link"><strong>Nama POS yang belum terhubung ke staff</strong>' +
-      '<p class="muted small">Hubungkan sekali. Setelah itu nama ini otomatis masuk ke hasil di hari-hari berikutnya.</p>' +
+    html += '<div class="tracker-card tracker-link"><strong>POS names not linked to staff yet</strong>' +
+      '<p class="muted small">Link each name once. After that it is counted automatically on later days.</p>' +
       unlinkedNames.map(function (w, i) {
         const sugg = suggestStaff(w);
-        const opts = '<option value="">Pilih staff…</option>' + tracker.staff.slice().sort((a, b) => a.name.localeCompare(b.name)).map(s =>
+        const opts = '<option value="">Choose staff…</option>' + tracker.staff.slice().sort((a, b) => a.name.localeCompare(b.name)).map(s =>
           '<option value="' + esc(s.nik) + '"' + (s.nik === sugg ? ' selected' : '') + '>' + esc(s.name) + '</option>').join("");
-        return '<div class="tracker-link-row"><span><strong>' + esc(w) + '</strong> <small class="muted">' + sumItems(res.unlinked[w].items) + ' menu tantangan' + (sugg ? ' · saran' : '') + '</small></span>' +
+        return '<div class="tracker-link-row"><span><strong>' + esc(w) + '</strong> <small class="muted">' + sumItems(res.unlinked[w].items) + ' challenge items' + (sugg ? ' · suggested' : '') + '</small></span>' +
           '<select id="map-' + i + '">' + opts + '</select>' +
-          '<button class="button-secondary" type="button" onclick="saveWaiterMap(' + i + ')">Simpan</button></div>';
+          '<button class="button-secondary" type="button" onclick="saveWaiterMap(' + i + ')">Save</button></div>';
       }).join("") + '</div>';
   }
   return html;
@@ -291,7 +294,7 @@ function setTrackerFilter(f) {
 async function onTrackerSales(input) {
   const file = input.files && input.files[0];
   if (!file) return;
-  tracker.busy = "Membaca laporan penjualan… (file besar bisa butuh beberapa detik)";
+  tracker.busy = "Reading the sales report… (large files can take a few seconds)";
   renderTab();
   try {
     tracker.lines = await parseSalesFile(file);
@@ -309,7 +312,7 @@ async function onTrackerSales(input) {
 async function onTrackerRoster(input) {
   const file = input.files && input.files[0];
   if (!file) return;
-  tracker.busy = "Membaca roster…";
+  tracker.busy = "Reading roster…";
   renderTab();
   try {
     tracker.roster = await readRosterText(file);
@@ -332,13 +335,108 @@ async function saveWaiterMap(i) {
   const posName = tracker.unlinkedNames[i];
   const nik = document.getElementById("map-" + i).value;
   const staff = (tracker.staff || []).find(s => s.nik === nik);
-  if (!staff) return toast("Pilih staff dulu.");
+  if (!staff) return toast("Choose a staff member first.");
   try {
     await api("addRow", [sessionToken, "posMap", { pos: posName, nik: nik, name: staff.name }]);
-    toast("Tersimpan: " + posName + " → " + staff.name);
+    toast("Saved: " + posName + " → " + staff.name);
     refreshSheet("posMap");
   } catch (e) {
     if (isSessionExpired(e)) return handleApiError(e);
     toast(e.message);
   }
+}
+
+
+/* ---------- SAVE A DAY (editors) ---------- */
+
+/** Save the current results: one row per staff member per challenge item, including zeros. Replaces that date. */
+async function saveTrackerDay() {
+  if (!tracker.roster) return toast("Upload the roster first, so staff who did not sell are saved as well.");
+  const items = challengeFor(tracker.date);
+  if (!items.length) return toast("No challenge list for this date.");
+  const res = trackerResults(tracker.date, items);
+  const niks = Array.from(new Set(onDutyNiks(tracker.staff || [], tracker.roster).concat(Object.keys(res.people))));
+  const names = {};
+  (tracker.staff || []).forEach(s => { names[s.nik] = s.name; });
+  const rows = [];
+  niks.forEach(function (nik) {
+    items.forEach(function (it) {
+      const p = res.people[nik];
+      rows.push({ nik: nik, name: names[nik] || "", item: it.item, sold: (p && p.items[it.item]) || 0, target: it.target });
+    });
+  });
+  if (!confirm("Save results for " + tracker.date + " (" + niks.length + " staff)? Results already saved for this date will be replaced.")) return;
+  try {
+    await api("saveUpsellDay", [sessionToken, tracker.date, rows]);
+    toast("Saved " + niks.length + " staff for " + tracker.date + ".");
+  } catch (e) {
+    if (isSessionExpired(e)) return handleApiError(e);
+    toast(e.message);
+  }
+}
+
+/* ---------- MY UPSELL (all staff, own rows only) ---------- */
+
+let myUpsell = { dates: null, loading: false, date: "", rowsDate: "", rows: null };
+
+function viewMyUpsell() {
+  let html = '<div class="page-heading"><h2>My Upsell</h2><p>Your challenge items for each day, with the target and how many you sold.</p></div>';
+  if (!myUpsell.dates) {
+    loadMyUpsellDates();
+    return html + '<div class="empty">Loading…</div>';
+  }
+  if (!myUpsell.dates.length) return html + '<div class="empty">No results have been saved yet.</div>';
+  if (!myUpsell.date || myUpsell.dates.indexOf(myUpsell.date) === -1) myUpsell.date = myUpsell.dates[0];
+
+  html += '<label class="tracker-step">Day<select class="input" onchange="onMyUpsellDate(this.value)">' +
+    myUpsell.dates.map(d => '<option value="' + esc(d) + '"' + (d === myUpsell.date ? ' selected' : '') + '>' + esc(d) + '</option>').join("") +
+    '</select></label>';
+
+  if (myUpsell.rowsDate !== myUpsell.date) loadMyUpsellRows();
+  if (!myUpsell.rows) return html + '<div class="empty">Loading…</div>';
+  if (!myUpsell.rows.length) return html + '<div class="empty">No challenge items were saved for you on this day.</div>';
+
+  const sold = myUpsell.rows.reduce((a, r) => a + r.sold, 0);
+  html += '<div class="tracker-summary"><div><strong>' + sold + '</strong><span>items you sold</span></div></div>';
+  html += '<div class="tracker-table"><table><thead><tr><th>Challenge item</th><th class="numeric">Target</th><th class="numeric">You sold</th></tr></thead><tbody>' +
+    myUpsell.rows.map(r => '<tr><td>' + esc(r.item) + '</td><td class="numeric">' + r.target + '</td><td class="numeric"><strong>' + r.sold + '</strong></td></tr>').join("") +
+    '</tbody></table></div>';
+  return html;
+}
+
+function loadMyUpsellDates() {
+  if (myUpsell.loading) return;
+  myUpsell.loading = true;
+  api("getMyUpsellDates", [sessionToken])
+    .then(function (dates) {
+      myUpsell.dates = Array.isArray(dates) ? dates : [];
+      myUpsell.loading = false;
+      renderTab();
+    })
+    .catch(function (e) {
+      myUpsell.loading = false;
+      if (isSessionExpired(e)) return handleApiError(e);
+      toast(e.message);
+    });
+}
+
+function loadMyUpsellRows() {
+  const date = myUpsell.date;
+  myUpsell.rowsDate = date;
+  myUpsell.rows = null;
+  api("getMyUpsellDay", [sessionToken, date])
+    .then(function (rows) {
+      if (myUpsell.date !== date) return;   // the user picked another day meanwhile
+      myUpsell.rows = Array.isArray(rows) ? rows : [];
+      renderTab();
+    })
+    .catch(function (e) {
+      if (isSessionExpired(e)) return handleApiError(e);
+      toast(e.message);
+    });
+}
+
+function onMyUpsellDate(d) {
+  myUpsell.date = d;
+  renderTab();
 }
