@@ -216,7 +216,10 @@ main#app { padding-top: 22px; padding-bottom: 48px; }
 /* Tiap kategori: judul di kiri, kartunya di kanan (di HP judul di atas) */
 .cat-row { display: grid; grid-template-columns: 160px minmax(0, 1fr); gap: 18px; align-items: start; margin-top: 22px; }
 .cat-row:first-child { margin-top: 0; }
-.cat-row > .group { margin: 0; padding-top: 4px; }
+.cat-row > .group {
+  margin: 0; padding: 2px 0 2px 12px; border-left: 3px solid var(--accent);
+  font-size: 17px; font-weight: 800; letter-spacing: 0.04em; line-height: 1.25; text-transform: uppercase;
+}
 .cat-row > .grid { min-width: 0; }
 .grid.academy-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
 /* Judul kartu tidak tertutup tombol Edit di pojok kanan atas */
@@ -224,7 +227,7 @@ main#app { padding-top: 22px; padding-bottom: 48px; }
 .add-btn, .edit-btn { white-space: nowrap; }
 @media (max-width: 560px) {
   .cat-row { grid-template-columns: 1fr; gap: 10px; }
-  .cat-row > .group { padding-top: 0; }
+  .cat-row > .group { font-size: 16px; }
   .grid.academy-grid { grid-template-columns: 1fr; }
 }
 
