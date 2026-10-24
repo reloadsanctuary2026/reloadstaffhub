@@ -4,13 +4,13 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.40.0";
+const APP_VERSION = "2.41.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
 const TABS = [
   { key: "home",     label: "Home", icon: HOME_ICON },
-  { key: "myupsell", label: "My Upsell" },
+  { key: "myupsell", label: "My Upsell", staffOnly: true },
   { key: "tracker",  label: "Upsell Tracker", editorsOnly: true },
   { key: "food",     label: "Food Bible" },
   { key: "beverage", label: "Beverage Bible" },
@@ -537,7 +537,7 @@ function handleApiError(e) {
 /* ---------- NAVIGATION ---------- */
 
 function renderTabbar() {
-  document.getElementById("tabbar").innerHTML = TABS.filter(t => !t.editorsOnly || canEdit()).map(function (t) {
+  document.getElementById("tabbar").innerHTML = TABS.filter(t => (!t.editorsOnly || canEdit()) && (!t.staffOnly || !canEdit())).map(function (t) {
     const inner = t.icon ? '<span class="nav-icon">' + t.icon + '</span>' : esc(t.label);
     return '<button class="tab' + (t.key === activeTab ? ' active' : '') +
       '" type="button" aria-label="' + esc(t.label) + '" onclick="showTab(\'' + t.key + '\')">' + inner + '</button>';
@@ -546,7 +546,8 @@ function renderTabbar() {
 
 function showTab(key) {
   activeTab = key;
-  if (key === "myupsell") myUpsell = { dates: null, loading: false, date: "", rowsDate: "", rows: null };   // reload, so new saves show up
+  if (key === "myupsell") myUpsell = { recap: null, loading: false, date: "" };   // reload, so new saves show up
+  if (key === "home") upsellSummary = null;                                          // reload yesterday's totals
   rearranging = false;
   guestsLanding = false;
   bulletinLanding = false;
@@ -578,7 +579,7 @@ function renderActiveView() {
   if (bulletinLanding) return viewBulletinLanding();
 
   let html = "";
-  if (activeTab === "home")          html = viewHome();
+  if (activeTab === "home")          html = upsellSummaryHtml() + viewHome();
   else if (activeTab === "food")     html = viewSearchable("food");
   else if (activeTab === "beverage") html = viewSearchable("beverage");
   else if (activeTab === "sop")      html = viewSearchable("sop");

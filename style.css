@@ -802,3 +802,17 @@ body { overflow-wrap: anywhere; }
 }
 
 .tracker-warn { background: var(--alert-bg); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; font-size: 14px; }
+
+/* ---------- MY UPSELL CHARTS AND HOME SUMMARY ---------- */
+.chart { width: 100%; height: auto; display: block; margin-top: 8px; }
+.chart .bar-sold { fill: var(--accent); }
+.chart .bar-target { fill: none; stroke: var(--muted); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.chart .bar-label { fill: var(--muted); font-size: 11px; }
+.chart .bar-axis { stroke: var(--border); stroke-width: 1; }
+.chart-legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.chart-legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: middle; border-radius: 2px; }
+.chart-legend .key-sold { background: var(--accent); }
+.chart-legend .key-target { border: 1.5px dashed var(--muted); }
+.tracker-save { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+.home-upsell { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; font-size: 15px; }
+.home-upsell strong { color: var(--accent); }
