@@ -742,3 +742,11 @@ ul.plain li:last-child { border-bottom: 0; }
 
 /* Tanda › di baris: rata tengah secara vertikal */
 .chev { display: flex; align-items: center; line-height: 1; }
+
+/* Teks panjang tanpa spasi tidak boleh melebarkan halaman */
+body { overflow-wrap: anywhere; }
+.grid > *, .guest-grid > *, .bl-list > *, .bl-item, .row, .card, .note, .person, .tile { min-width: 0; }
+.tile-head h3, .row-main strong, .person-name, .note-title, .card h3 { overflow-wrap: anywhere; }
+
+/* Materials: tombol tambah PDF di form */
+.materials-add { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }

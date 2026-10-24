@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.32.1";
+const APP_VERSION = "2.33.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -105,8 +105,9 @@ const EDIT_FIELDS = {
     { key: "title",       label: "Title" },
     { key: "shortDesc",   label: "Short description" },
     { key: "content",     label: "Material content", input: "multi" },
-    { key: "fullLink",    label: "Material link", input: "url" },
-    { key: "video",       label: "Video link", input: "url" },
+    { key: "materials",   label: "Materials (one per line: Name | link)", input: "materials" },
+    { key: "fullLink",    label: "Main material link (optional)", input: "url" },
+    { key: "video",       label: "Video link (YouTube or Google Drive)", input: "url" },
     { key: "readingTime", label: "Reading time", src: true },
     { key: "knowledge",   label: "Knowledge of the Week", options: ["NO", "YES"] },
     { key: "updated",     label: "Last updated", input: "today" },
@@ -838,7 +839,7 @@ function academyCard(r) {
     (r.content ? '<p class="pre muted small">' + esc(r.content) + '</p>' : '') +
     '<div class="actions">' +
       (r.video ? '<a class="btn small outline" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="' + esc(r.video) + '">Watch video</a>' : '') +
-      (r.fullLink ? '<a class="btn small outline" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="' + esc(r.fullLink) + '">Read material</a>' : '') +
+      materialButtons(r) +
     '</div>' +
     editBtn("academy", r, true) +
   '</article>';
@@ -1320,8 +1321,10 @@ function openDetail(sheetKey, row) {
   const metaRow = m => r[m[1]]
     ? '<div class="detail-row"><span class="muted">' + esc(m[0]) + '</span><span>' + esc((m[2] || "") + r[m[1]]) + '</span></div>'
     : "";
-  const links = cfg.links.filter(l => r[l[1]]).map(l =>
-    '<a class="btn small outline" target="_blank" rel="noopener" href="' + esc(r[l[1]]) + '">' + esc(l[0]) + '</a>').join("");
+  const links = sheetKey === "academy"
+    ? (r.video ? '<a class="btn small outline" target="_blank" rel="noopener" href="' + esc(r.video) + '">Watch video</a>' : '') + materialButtons(r)
+    : cfg.links.filter(l => r[l[1]]).map(l =>
+        '<a class="btn small outline" target="_blank" rel="noopener" href="' + esc(r[l[1]]) + '">' + esc(l[0]) + '</a>').join("");
   const wa = sheetKey === "teams" && r.phone
     ? '<a class="btn small" target="_blank" rel="noopener" href="https://wa.me/' + esc(String(r.phone).replace(/\D/g, "")) + '">WhatsApp</a>'
     : "";
@@ -1516,6 +1519,7 @@ function fieldInput(sheetKey, f, v) {
   if (f.input === "number") return '<input class="input" type="number" inputmode="numeric" min="0" ' + key + ' value="' + esc(v) + '">';
   if (f.input === "phone") return '<input class="input" type="tel" inputmode="numeric" ' + key + ' value="' + esc(v) + '" placeholder="628...">';
   if (f.input === "photo" || f.input === "pdf") return uploadHtml(f, v);
+  if (f.input === "materials") return materialsHtml(f, v);
   if (f.input === "url") return '<input class="input" type="url" ' + key + ' value="' + esc(v) + '" placeholder="https://...">';
   if (f.input === "multi") return '<textarea class="input" rows="4" ' + key + '>' + esc(v) + '</textarea>';
   if (f.options || f.src) return selectHtml(sheetKey, f, v);
@@ -1690,6 +1694,78 @@ function isoFromSheetDate(v) {
   const mi = monthIndex(m[2]);
   if (mi === -1) return "";
   return m[3] + "-" + pad2(mi + 1) + "-" + pad2(Number(m[1]));
+}
+
+/* ---------- MATERIALS (Academy) ---------- */
+
+/** Textarea materials + tombol upload PDF. Satu baris per materi: "Nama | link atau ID file". */
+function materialsHtml(f, v) {
+  return '<textarea class="input" rows="4" data-key="' + f.key + '" placeholder="Name | https://...  (one per line)">' + esc(v) + '</textarea>' +
+    '<div class="materials-add">' +
+      '<button class="ghost small" type="button" onclick="document.getElementById(\'materialPdf\').click()">+ Add PDF (max 8 MB)</button>' +
+      '<input type="file" id="materialPdf" hidden accept="application/pdf" onchange="onMaterialPdf(this)">' +
+      '<span class="small muted" data-status="' + f.key + '"></span>' +
+    '</div>';
+}
+
+/** Upload PDF ke Drive, lalu tambahkan barisnya ke daftar materials di form. */
+async function onMaterialPdf(input) {
+  const file = input.files && input.files[0];
+  input.value = "";
+  if (!file) return;
+  const status = document.querySelector('[data-status="materials"]');
+  const box = document.querySelector('#editForm [data-key="materials"]');
+  if (file.type !== "application/pdf") { status.innerText = "Please choose a PDF file."; return; }
+  if (file.size > 8 * 1024 * 1024) { status.innerText = "File is too large. Maximum 8 MB."; return; }
+  const name = prompt("Name for this material", file.name.replace(/\.pdf$/i, ""));
+  if (!name || !name.trim()) { status.innerText = ""; return; }
+
+  setFormBusy(true);
+  status.innerHTML = '<span class="mini-spinner"></span>Uploading...';
+  try {
+    const base64 = await readAsBase64(file);
+    const res = await api("uploadFile", [sessionToken, base64, "application/pdf", file.name]);
+    const line = name.trim().replace(/\s*\|\s*/g, " ") + " | " + res.id;
+    box.value = box.value.trim() ? box.value.replace(/\s+$/, "") + "\n" + line : line;
+    status.innerText = "Uploaded.";
+  } catch (e) {
+    if (isSessionExpired(e)) {
+      handleApiError(e);
+      return;
+    }
+    status.innerText = e.message;
+  } finally {
+    setFormBusy(false);
+  }
+}
+
+/**
+ * Materials jadi daftar tombol. Baris "Nama | link" atau "Nama | ID file Drive".
+ * Link utama lama (fullLink) ikut ditampilkan kalau belum ada di daftar.
+ */
+function materialsOf(r) {
+  const out = [];
+  String(r.materials || "").split("\n").forEach(function (line) {
+    const t = line.trim();
+    if (!t) return;
+    const bar = t.indexOf("|");
+    const name = bar === -1 ? t : t.slice(0, bar).trim();
+    const value = bar === -1 ? "" : t.slice(bar + 1).trim();
+    let href = "";
+    if (/^https?:\/\//i.test(value)) href = value;
+    else if (/^[\w-]{20,}$/.test(value)) href = "https://drive.google.com/file/d/" + value + "/view";
+    if (href) out.push({ name: name || "Material", href: href });
+  });
+  if (r.fullLink && !out.some(function (m) { return m.href === r.fullLink; })) {
+    out.unshift({ name: "Read material", href: r.fullLink });
+  }
+  return out;
+}
+
+function materialButtons(r) {
+  return materialsOf(r).map(function (m) {
+    return '<a class="btn small outline" target="_blank" rel="noopener" onclick="event.stopPropagation()" href="' + esc(m.href) + '">' + esc(m.name) + '</a>';
+  }).join("");
 }
 
 /* ---------- PHOTO & PDF UPLOAD ---------- */
