@@ -342,7 +342,7 @@ function viewTracker() {
   if (unlinkedNames.length) {
     html += '<div class="tracker-warn">' + unlinkedNames.length + ' POS name(s) not linked to staff yet, so these results are incomplete. Link them below the table.</div>';
   }
-  html += '<div class="tracker-save"><button class="button-primary" type="button" onclick="saveTrackerDay()">Save results for this day</button>' +
+  html += '<div class="tracker-save"><button class="button-primary" type="button" onclick="saveTrackerDay()">Save results for this day</button> <button class="button-secondary" type="button" onclick="downloadTrackerReport()">Download PDF report</button>' +
     '<small class="muted">Staff can then see their own items and targets in My Upsell and on Home.</small></div>';
 
   html += '<div class="tracker-filter">' +
@@ -395,7 +395,7 @@ async function saveTrackerDay() {
   const rows = [];
   withShift.forEach(function (r) {
     tracker.lastItems.forEach(function (it) {
-      rows.push({ nik: r.nik, name: r.name, item: it.item, sold: r.items[it.item] || 0, target: r.targets[it.item] || 0 });
+      rows.push({ nik: r.nik, name: r.name, shift: r.shift, item: it.item, sold: r.items[it.item] || 0, target: r.targets[it.item] || 0 });
     });
   });
   if (!rows.length) return toast("None of the staff have a shift on the roster.");
@@ -599,4 +599,115 @@ function loadUpsellSummary() {
       upsellSummary = { failed: true };
       if (isSessionExpired(e)) handleApiError(e);
     });
+}
+
+
+/* ---------- DAILY PDF REPORT (editors) ----------
+ * The report is built from the saved day. A new tab opens with a print-ready page (A4, brand colours).
+ * The browser's "Save as PDF" in the print dialog makes the file. */
+
+const REPORT_LOGO_SVG = '<svg viewBox="0 0 953 958" aria-hidden="true"><path d="M0 0H620A292 295 0 0 1 660 592L950 955H725L455 620H258L155 480H560A170 170 0 0 0 570 142H0Z"/></svg>';
+const REPORT_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function buildUpsellReportHtml(rep) {
+  const staff = rep.staff || [];
+  const sold = staff.filter(s => s.sold > 0).length;
+  const notSold = staff.length - sold;
+  const totalSold = staff.reduce((a, s) => a + s.sold, 0);
+  const totalTarget = staff.reduce((a, s) => a + s.target, 0);
+  const pct = totalTarget ? Math.round((totalSold / totalTarget) * 100) : 0;
+
+  // per menu: sold and target over all staff
+  const byItem = {};
+  const itemOrder = [];
+  staff.forEach(function (s) {
+    s.items.forEach(function (i) {
+      if (!byItem[i.item]) { byItem[i.item] = { item: i.item, sold: 0, target: 0 }; itemOrder.push(i.item); }
+      byItem[i.item].sold += i.sold;
+      byItem[i.item].target += i.target;
+    });
+  });
+
+  const d = new Date(rep.date + "T00:00:00");
+  const dateLabel = REPORT_DAYS[d.getDay()] + ", " + formatSheetDate(d);
+
+  const itemRows = itemOrder.map(function (k) {
+    const r = byItem[k];
+    const p = r.target ? Math.round((r.sold / r.target) * 100) : 0;
+    return '<tr><td>' + esc(r.item) + '</td><td class="num">' + r.sold + '</td><td class="num">' + r.target + '</td><td class="num">' + p + '%</td></tr>';
+  }).join("");
+
+  const staffRows = staff.map(function (s) {
+    const chips = s.items.map(i => '<span class="chip">' + esc(i.item) + ' <b>' + i.sold + '/' + i.target + '</b></span>').join("");
+    const status = s.sold > 0 ? '<span class="pill sold">Sold</span>' : '<span class="pill none">Not sold yet</span>';
+    return '<tr><td><strong>' + esc(s.name) + '</strong></td><td>' + esc(s.shift || "—") + '</td><td>' + status + '</td><td>' + (chips || '—') + '</td><td class="num">' + s.sold + ' / ' + s.target + '</td></tr>';
+  }).join("");
+
+  return '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
+    '<title>Upsell Report ' + esc(rep.date) + '</title>' +
+    '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap">' +
+    '<style>' +
+    '@page { size: A4; margin: 0; }' +
+    '* { box-sizing: border-box; }' +
+    'body { margin: 0; font-family: Poppins, "Segoe UI", Arial, sans-serif; color: #2b211b; background: #f3ede6; }' +
+    '.page { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; }' +
+    '.band { background: #030303; color: #DECAB8; padding: 26px 30px; display: flex; align-items: center; gap: 16px; }' +
+    '.band svg { width: 44px; height: 44px; fill: #DECAB8; flex: none; }' +
+    '.band h1 { margin: 0; font-size: 22px; font-weight: 700; }' +
+    '.band .tag { color: #AA7655; font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; margin-top: 3px; }' +
+    '.band .date { margin-left: auto; text-align: right; font-size: 13px; }' +
+    '.body { padding: 22px 30px; }' +
+    '.cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }' +
+    '.card { background: #faf6f1; border-top: 3px solid #AA7655; border-radius: 6px; padding: 12px 14px; }' +
+    '.card b { display: block; font-size: 24px; color: #2b211b; }' +
+    '.card span { font-size: 11px; color: #7a6a5e; text-transform: uppercase; letter-spacing: .06em; }' +
+    'h2 { font-size: 13px; color: #AA7655; text-transform: uppercase; letter-spacing: .12em; margin: 18px 0 8px; }' +
+    'table { width: 100%; border-collapse: collapse; font-size: 12px; }' +
+    'th { background: #030303; color: #DECAB8; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: .08em; padding: 8px 10px; }' +
+    'td { padding: 8px 10px; border-bottom: 1px solid #eadfd3; vertical-align: top; }' +
+    'tr { break-inside: avoid; }' +
+    '.num { text-align: right; white-space: nowrap; }' +
+    '.chip { display: inline-block; background: #f6ece3; color: #5b4636; border-radius: 999px; padding: 2px 8px; margin: 2px 4px 2px 0; font-size: 11px; }' +
+    '.chip b { color: #AA7655; }' +
+    '.pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 11px; font-weight: 600; }' +
+    '.pill.sold { background: #AA7655; color: #fff; }' +
+    '.pill.none { background: #ece6e0; color: #6b5a4e; }' +
+    '.foot { margin-top: 22px; padding-top: 10px; border-top: 1px solid #eadfd3; font-size: 10px; color: #8a7a6e; display: flex; justify-content: space-between; }' +
+    '.noprint { text-align: center; padding: 14px; }' +
+    '.noprint button { font-family: inherit; background: #AA7655; color: #fff; border: 0; border-radius: 999px; padding: 10px 22px; font-size: 14px; cursor: pointer; }' +
+    '@media print { body { background: #fff; } .noprint { display: none; } .page { margin: 0; width: auto; min-height: 0; } }' +
+    '</style></head><body>' +
+    '<div class="noprint"><button onclick="window.print()">Print / Save as PDF</button></div>' +
+    '<div class="page">' +
+    '<div class="band">' + REPORT_LOGO_SVG + '<div><h1>Reload Staff Hub</h1><div class="tag">Upsell Report</div></div>' +
+    '<div class="date"><strong>' + esc(dateLabel) + '</strong><br>Challenge items · servers</div></div>' +
+    '<div class="body">' +
+    '<div class="cards">' +
+    '<div class="card"><b>' + staff.length + '</b><span>Servers on report</span></div>' +
+    '<div class="card"><b>' + sold + '</b><span>Sold</span></div>' +
+    '<div class="card"><b>' + notSold + '</b><span>Not sold yet</span></div>' +
+    '<div class="card"><b>' + totalSold + ' / ' + totalTarget + '</b><span>Items sold / target (' + pct + '%)</span></div>' +
+    '</div>' +
+    '<h2>By challenge item</h2>' +
+    '<table><thead><tr><th>Item</th><th class="num">Sold</th><th class="num">Target</th><th class="num">Achieved</th></tr></thead><tbody>' + (itemRows || '<tr><td colspan="4">No items</td></tr>') + '</tbody></table>' +
+    '<h2>By server</h2>' +
+    '<table><thead><tr><th>Server</th><th>Shift</th><th>Status</th><th>Items (sold / target)</th><th class="num">Total</th></tr></thead><tbody>' + (staffRows || '<tr><td colspan="5">No results</td></tr>') + '</tbody></table>' +
+    '<div class="foot"><span>Saved by ' + esc(rep.savedBy || "—") + ' · Printed by ' + esc(rep.generatedBy) + ' · ' + esc(rep.generatedAt) + '</span><span>Reload Staff Hub</span></div>' +
+    '</div></div></body></html>';
+}
+
+async function downloadTrackerReport() {
+  if (!tracker.date) return toast("Choose a date first.");
+  try {
+    const rep = await api("getUpsellDayReport", [sessionToken, tracker.date]);
+    if (!rep.staff.length) return toast("No saved results for this date yet. Save the results first.");
+    const w = window.open("", "_blank");
+    if (!w) return toast("Allow pop-ups to open the report.");
+    w.document.open();
+    w.document.write(buildUpsellReportHtml(rep));
+    w.document.close();
+  } catch (e) {
+    if (isSessionExpired(e)) return handleApiError(e);
+    toast(e.message);
+  }
 }
