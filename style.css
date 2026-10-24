@@ -213,6 +213,14 @@ main#app { padding-top: 22px; padding-bottom: 48px; }
   gap: 14px;
 }
 .grid.two { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+.card-cat { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); }
+.grid.academy-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+/* Judul dan nama kategori tidak tertutup tombol Edit di pojok kanan atas */
+.card:has(.corner-edit) h3, .card:has(.corner-edit) .card-cat { padding-right: 64px; }
+.add-btn, .edit-btn { white-space: nowrap; }
+@media (max-width: 560px) {
+  .grid.academy-grid { grid-template-columns: 1fr; }
+}
 
 /* ---------- CARDS ---------- */
 
