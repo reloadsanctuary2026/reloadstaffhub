@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.35.1";
+const APP_VERSION = "2.36.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -748,14 +748,21 @@ function grouped(items, field, renderBody) {
   ).join("");
 }
 
+/* Tiap kategori: judul di kiri, kartunya di kanan. Di HP judul di atas kartu. */
+function categoryRows(items, field, renderCard, gridClass) {
+  return groupBy(items, field).map(g =>
+    '<section class="cat-row"><h3 class="group">' + esc(g.key) + '</h3>' +
+    '<div class="' + gridClass + '">' + g.items.map(renderCard).join("") + '</div></section>'
+  ).join("");
+}
+
 function menuList(rows, sheetKey) {
   const items = rows.filter(r => r.name && inTabCategory(sheetKey, r) && matches([r.category, r.name, r.description]));
   if (!items.length) return emptyState("No matching menu items.");
   if (viewOf(sheetKey) === "list") {
     return grouped(items, "category", list => list.map(r => menuRow(r, sheetKey)).join(""));
   }
-  return grouped(items, "category", list =>
-    '<div class="grid">' + list.map(r => menuCard(r, sheetKey)).join("") + '</div>');
+  return categoryRows(items, "category", r => menuCard(r, sheetKey), "grid");
 }
 
 function menuRow(r, sheetKey) {
@@ -786,7 +793,7 @@ function sopList() {
   if (viewOf("sop") === "list") {
     return grouped(items, "category", list => list.map(sopRow).join(""));
   }
-  return grouped(items, "category", list => '<div class="grid">' + list.map(sopCard).join("") + '</div>');
+  return categoryRows(items, "category", sopCard, "grid");
 }
 
 function sopCard(r) {
@@ -817,9 +824,7 @@ function academyList() {
   if (viewOf("academy") === "list") {
     return grouped(items, "category", list => list.map(academyRow).join(""));
   }
-  /* Kartu satu grid, diurutkan per kategori. Nama kategori tampil di tiap kartu. */
-  const sorted = groupBy(items, "category").reduce((all, g) => all.concat(g.items), []);
-  return '<div class="grid academy-grid">' + sorted.map(academyCard).join("") + '</div>';
+  return categoryRows(items, "category", academyCard, "grid academy-grid");
 }
 
 function academyRow(r) {
@@ -833,7 +838,6 @@ function academyRow(r) {
 }
 function academyCard(r) {
   return '<article class="card clickable" onclick="openDetail(\'academy\',' + r._row + ')">' +
-    '<div class="card-cat">' + esc(r.category) + '</div>' +
     '<div class="row-between">' +
       '<h3>' + esc(r.title) + '</h3>' +
       (r.knowledge === "YES" ? '<span class="badge">Knowledge of the Week</span>' : '') +
