@@ -4,12 +4,13 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.37.2";
+const APP_VERSION = "2.39.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
 const TABS = [
   { key: "home",     label: "Home", icon: HOME_ICON },
+  { key: "tracker",  label: "Upsell Tracker", editorsOnly: true },
   { key: "food",     label: "Food Bible" },
   { key: "beverage", label: "Beverage Bible" },
   { key: "sop",      label: "SOP" },
@@ -30,6 +31,12 @@ const TABS = [
 const STATUS_OPTIONS = ["ACTIVE", "NOT ACTIVE"];
 const SESI_ORDER = ["Morning", "Afternoon", "Evening"];
 const ALLERGEN_OPTIONS = ["Gluten", "Milk", "Egg", "Nut", "Seafood", "Soy"];
+/* Logo per allergen (folder allergen/). Key = lowercase name, so old spellings like "Nuts" also get a logo. */
+const ALLERGEN_ICON_FILES = {
+  gluten: "allergen/gluten.png", milk: "allergen/milk.png", egg: "allergen/egg.png",
+  nut: "allergen/nut.png", nuts: "allergen/nut.png", seafood: "allergen/seafood.png",
+  soy: "allergen/soy.png", soybeans: "allergen/soy.png"
+};
 const DIFFICULTY_OPTIONS = ["Beginner", "Intermediate", "Advanced"];
 const SECTION_OPTIONS = ["Company Story", "Vision", "Mission", "Identity & Essences", "Core Values"];
 /* Guest categories. Same as GUEST_CATEGORIES in the backend (Code.gs). If one changes, change both. */
@@ -357,7 +364,7 @@ const DATA_KEYS = ["importantInfo", "upsell", "bulletin", "inspiration", "food",
 
 /* Data is loaded per section. Home loads at login. Each tab loads when opened, then is kept. */
 const HOME_DATA = ["guests", "bulletin", "upsell", "inspiration", "bulletinTypes"];
-const TAB_DATA = { food: ["food"], beverage: ["beverage"], sop: ["sop"], academy: ["academy"], teams: ["teams"], about: ["about"] };
+const TAB_DATA = { food: ["food"], beverage: ["beverage"], sop: ["sop"], academy: ["academy"], teams: ["teams"], about: ["about"], tracker: ["upsell", "posMap"] };
 const TAB_CATEGORY_FIELD = { food: "category", beverage: "category", sop: "category", academy: "category", teams: "department" };
 let loadedKeys = {};
 let loadedAt = {};        // last load time of each sheet (ms)
@@ -529,7 +536,7 @@ function handleApiError(e) {
 /* ---------- NAVIGATION ---------- */
 
 function renderTabbar() {
-  document.getElementById("tabbar").innerHTML = TABS.map(function (t) {
+  document.getElementById("tabbar").innerHTML = TABS.filter(t => !t.editorsOnly || canEdit()).map(function (t) {
     const inner = t.icon ? '<span class="nav-icon">' + t.icon + '</span>' : esc(t.label);
     return '<button class="tab' + (t.key === activeTab ? ' active' : '') +
       '" type="button" aria-label="' + esc(t.label) + '" onclick="showTab(\'' + t.key + '\')">' + inner + '</button>';
@@ -576,6 +583,7 @@ function renderActiveView() {
   else if (activeTab === "teams")    html = viewTeams();
   else if (activeTab === "academy")  html = viewSearchable("academy");
   else if (activeTab === "about")    html = viewAbout();
+  else if (activeTab === "tracker")  html = viewTracker();
 
   return html;
 }
@@ -782,7 +790,7 @@ function menuCard(r, sheetKey) {
       '<div class="tile-head"><h3>' + esc(r.name) + '</h3>' +
       '<span class="price">Rp ' + esc(r.price) + '</span></div>' +
       '<p class="muted small pre">' + esc(r.description) + '</p>' +
-      (r.allergens ? '<span class="allergen">Allergen: ' + esc(r.allergens) + '</span>' : '') +
+      (r.allergens ? '<span class="allergen">Allergen: ' + allergenHtml(r.allergens) + '</span>' : '') +
       editBtn(sheetKey, r, true) +
     '</div>' +
   '</article>';
@@ -1450,7 +1458,7 @@ function openDetail(sheetKey, row) {
   const r = (appData[sheetKey] || []).find(x => x._row === row);
   if (!cfg || !r) return toast("This data no longer exists. Refresh first.");
   const metaRow = m => r[m[1]]
-    ? '<div class="detail-row"><span class="muted">' + esc(m[0]) + '</span><span>' + esc((m[2] || "") + r[m[1]]) + '</span></div>'
+    ? '<div class="detail-row"><span class="muted">' + esc(m[0]) + '</span><span>' + (m[1] === "allergens" ? allergenHtml(r[m[1]]) : esc((m[2] || "") + r[m[1]])) + '</span></div>'
     : "";
   const links = sheetKey === "academy"
     ? (r.video ? '<a class="btn small outline" target="_blank" rel="noopener" href="' + safeUrl(r.video) + '">Watch video</a>' : '') + materialButtons(r)
@@ -1706,12 +1714,25 @@ function selectHtml(sheetKey, f, v) {
 }
 
 /** Allergen checkboxes. Old values not in the list are still shown and checked. */
+/** Logo for one allergen name, or "" if there is no logo for it. */
+function allergenIconHtml(name, cls) {
+  const file = ALLERGEN_ICON_FILES[String(name).trim().toLowerCase()];
+  return file ? '<img class="' + cls + '" src="' + file + '" alt="" loading="lazy">' : "";
+}
+
+/** Allergen text "Gluten,Milk" -> logo + name for each one. Names without a logo are shown as text. */
+function allergenHtml(text) {
+  return String(text || "").split(",").map(s => s.trim()).filter(Boolean).map(a =>
+    '<span class="allergen-item">' + allergenIconHtml(a, "allergen-icon") + esc(a) + '</span>'
+  ).join("");
+}
+
 function checksHtml(f, v) {
   const current = v.split(",").map(s => s.trim()).filter(Boolean);
   const all = ALLERGEN_OPTIONS.concat(current.filter(x => ALLERGEN_OPTIONS.indexOf(x) === -1));
   return '<div class="checks">' + all.map(o =>
     '<label class="check"><input type="checkbox" data-check="' + f.key + '" value="' + esc(o) + '"' +
-      (current.indexOf(o) !== -1 ? ' checked' : '') + '> ' + esc(o) + '</label>'
+      (current.indexOf(o) !== -1 ? ' checked' : '') + '> ' + allergenIconHtml(o, "allergen-icon") + esc(o) + '</label>'
   ).join("") + '</div>';
 }
 

@@ -289,7 +289,11 @@ main#app { padding-top: 22px; padding-bottom: 48px; }
 .tile-head h3 { font-size: 15px; font-weight: 700; }
 .price { color: var(--accent); font-weight: 700; white-space: nowrap; font-size: 14px; }
 .tile-body .small { margin: 6px 0 0; }
-.allergen { display: inline-block; margin: 10px 0 0; font-size: 12px; color: var(--text); background: var(--alert-bg); padding: 3px 9px; border-radius: 999px; align-self: flex-start; }
+.allergen { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 10px 0 0; font-size: 12px; color: var(--text); background: var(--alert-bg); padding: 3px 9px; border-radius: 999px; align-self: flex-start; }
+.allergen-item { display: inline-flex; align-items: center; gap: 5px; }
+.allergen-icon { width: 20px; height: 20px; border-radius: 50%; flex: none; }
+.check .allergen-icon { width: 22px; height: 22px; vertical-align: middle; margin-right: 4px; }
+.detail-row .allergen-item { margin-right: 10px; }
 
 /* Baris (SOP) */
 .row {
@@ -771,3 +775,30 @@ body { overflow-wrap: anywhere; }
 /* Rearrange Our Teams */
 .person-placeholder { border: 1px dashed var(--accent); border-radius: var(--radius); background: var(--accent-soft); }
 .rearranging .person { cursor: grab; touch-action: none; outline: 1px dashed rgba(170, 118, 85, 0.5); outline-offset: 4px; }
+
+/* ---------- UPSELL TRACKER ---------- */
+.tracker-steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tracker-step { display: flex; flex-direction: column; gap: 6px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; font-weight: 600; min-width: 0; }
+.tracker-step small { font-weight: 400; color: var(--muted); overflow-wrap: anywhere; }
+.tracker-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 16px; }
+.tracker-items, .tracker-filter { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.tracker-item, .tracker-chip { display: inline-flex; gap: 6px; align-items: center; padding: 4px 10px; border-radius: 999px; background: var(--alert-bg); font-size: 13px; }
+.tracker-summary { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+.tracker-summary > div { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 14px; min-width: 120px; }
+.tracker-summary strong { display: block; font-size: 22px; }
+.tracker-summary span { font-size: 12px; color: var(--muted); }
+.tracker-filter { margin-bottom: 12px; }
+.tracker-table { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; }
+.tracker-table table { width: 100%; border-collapse: collapse; }
+.tracker-table th, .tracker-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+.tracker-table th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
+.tracker-table .numeric { text-align: right; }
+.tracker-table .badge.ok { background: rgba(120, 180, 90, 0.18); color: #9fd27f; }
+.tracker-link-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--border); }
+.tracker-link-row select { min-width: 220px; max-width: 100%; }
+@media (max-width: 560px) {
+  .tracker-steps { grid-template-columns: 1fr; }
+  .tracker-link-row select { min-width: 0; width: 100%; }
+}
+
+.tracker-warn { background: var(--alert-bg); border-radius: var(--radius); padding: 10px 14px; margin-bottom: 12px; font-size: 14px; }
