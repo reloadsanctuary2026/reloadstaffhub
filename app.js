@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.47.0";
+const APP_VERSION = "2.47.1";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -651,20 +651,31 @@ function upsellPanel() {
   if (!rows.length) return emptyState("No upsell for today.");
 
   const rank = name => (SHIFT_NAMES.indexOf(name) === -1 ? 99 : SHIFT_NAMES.indexOf(name));
-  const sessions = SESI_ORDER.concat(rows.map(r => r.sesi || "").filter(s => SESI_ORDER.indexOf(s) === -1 && s));
-  const uniq = sessions.filter((s, i) => sessions.indexOf(s) === i);
+  const sessions = SESI_ORDER.concat(rows.map(r => r.sesi || "").filter(x => SESI_ORDER.indexOf(x) === -1 && x));
+  const uniq = sessions.filter((x, i) => sessions.indexOf(x) === i);
 
   return uniq.map(function (sesi) {
     const group = rows.filter(r => (r.sesi || "") === sesi)
       .sort((a, b) => String(a.item).localeCompare(String(b.item)) || (rank(a.shift) - rank(b.shift)));
     if (!group.length) return "";
+
+    // One line per item: the rows of one item (one per shift) are shown together.
+    const items = [];
+    group.forEach(function (r) {
+      const key = String(r.item).trim().toLowerCase();
+      let it = items.find(x => x.key === key);
+      if (!it) { it = { key: key, first: r, shifts: [] }; items.push(it); }
+      it.shifts.push(r.shift || "");
+    });
+
     return '<div class="card upsell-session">' +
-      '<div class="row-between"><strong>' + esc(sesi || "No session") + '</strong><span class="muted small">' + group.length + ' item' + (group.length > 1 ? "s" : "") + '</span></div>' +
-      group.map(r =>
-        '<div class="upsell-line"><span>' + esc(r.item) + ' <small class="muted">' + esc(r.shift || "") + '</small></span>' +
-        '<span class="price">' + esc(r.target) + ' ' + esc(r.satuan) + '</span>' +
-        editBtn("upsell", r) + '</div>'
-      ).join("") +
+      '<div class="row-between"><strong>' + esc(sesi || "No session") + '</strong><span class="muted small">' + items.length + ' item' + (items.length > 1 ? "s" : "") + '</span></div>' +
+      items.map(it => {
+        const r = it.first;
+        return '<div class="upsell-line"><span>' + esc(r.item) + ' <small class="muted">' + esc(it.shifts.join(" · ")) + '</small></span>' +
+          '<span class="price">' + esc(r.target) + ' ' + esc(r.satuan) + '</span>' +
+          editBtn("upsell", r) + '</div>';
+      }).join("") +
     '</div>';
   }).join("");
 }
