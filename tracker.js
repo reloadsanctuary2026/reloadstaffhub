@@ -175,10 +175,28 @@ function targetsByShift(dateIso, item) {
   return Object.keys(out).map(s => ({ shift: s, target: out[s] }));
 }
 
-/** A POS menu counts for a challenge item when its name contains the item name (promo versions included). */
+/** Name for matching: lower case, no accents, single spaces, and no tags in brackets such as (PACKAGE) or (PROMO). */
+function menuKey(s) {
+  return String(s == null ? "" : s)
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/–/g, "-")
+    .toLowerCase()
+    .replace(/(\s*\([^()]*\))+\s*$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** A POS menu counts for a challenge item when the names are the same once tags and accents are ignored.
+ *  "CAULIFLOWER 80G" matches "CAULIFLOWER 80G (PACKAGE)". "Coke" does not match "Coke Zero". */
 function matchesItem(line, item) {
-  const it = trackerNorm(item);
-  return trackerNorm(line.menu).indexOf(it) !== -1 || trackerNorm(line.custom).indexOf(it) !== -1;
+  const it = menuKey(item);
+  if (!it) return false;
+  return menuKey(line.menu) === it || menuKey(line.custom) === it;
+}
+
+/** Menu name for the dropdown: without (PACKAGE), and each name once. */
+function dropdownName(s) {
+  return String(s == null ? "" : s).replace(/\s*\(package\)\s*$/i, "").replace(/\s+/g, " ").trim();
 }
 
 function posMapIndex() {
@@ -435,7 +453,8 @@ async function onTrackerSales(input) {
 function saveMenuNamesFromLines(lines) {
   const names = [];
   lines.forEach(function (l) {
-    if (l.menu && names.indexOf(l.menu) === -1) names.push(l.menu);
+    const name = dropdownName(l.menu);
+    if (name && names.indexOf(name) === -1) names.push(name);
   });
   if (!names.length) return;
   api("saveMenuNames", [sessionToken, names])

@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.44.1";
+const APP_VERSION = "2.44.2";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -1785,7 +1785,9 @@ function syncUpsellSession() {
 
 /** POS menu names for the Upsell item dropdown (from 16_PosMenus). */
 function posMenuNames() {
-  return (appData && appData.posMenus ? appData.posMenus : []).map(r => r.name).filter(Boolean)
+  const seen = {};
+  return (appData && appData.posMenus ? appData.posMenus : []).map(r => String(r.name || "").replace(/\s*\(package\)\s*$/i, "").trim())
+    .filter(function (n) { if (!n || seen[n.toLowerCase()]) return false; seen[n.toLowerCase()] = true; return true; })
     .sort((a, b) => a.localeCompare(b));
 }
 
