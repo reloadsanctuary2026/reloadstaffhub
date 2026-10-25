@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.48.2";
+const APP_VERSION = "2.48.3";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -611,14 +611,13 @@ function viewHome() {
   const news = newestFirst(appData.bulletin.filter(isActive)).slice(0, BULLETIN_HOME_LIMIT);
 
   return '<div class="home-top"><section class="hero">' +
+      '<div class="hero-actions">' + (quote ? editBtn("inspiration", quote) : '') + addBtn("inspiration", "+ Quote") + '</div>' +
       '<div class="hero-greet">Good ' + dayPart().word + '</div>' +
       '<div class="hero-name">' + esc(greetingName()) + '</div>' +
       (quote
         ? '<p class="hero-quote">“' + esc(quote.quote) + '”</p>' +
-          '<cite class="hero-cite">— ' + esc(quote.author) + '</cite>' +
-          editBtn("inspiration", quote)
+          '<cite class="hero-cite">— ' + esc(quote.author) + '</cite>'
         : '') +
-      addBtn("inspiration", "+ Quote") +
     '</section>' + upsellSummaryHtml() + '</div>' +
 
     '<div class="home-grid">' +
