@@ -823,7 +823,8 @@ body { overflow-wrap: anywhere; }
 .home-top > .hero, .home-top > .home-upsell { margin: 0; }
 .home-top > .home-upsell { display: flex; align-items: center; padding: 22px 26px; }
 /* Tombol Edit dan + Quote di pojok kanan atas, teks quote tetap yang paling terlihat */
-.hero .hero-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin: 0 0 6px; }
+.hero .hero-actions { position: absolute; top: 16px; right: 16px; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin: 0; }
+.hero .hero-greet, .hero .hero-name { padding-right: 150px; }
 .hero .hero-actions .edit-btn, .hero .hero-actions .add-btn { margin: 0; }
 @media (min-width: 900px) {
   .home-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
