@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.45.0";
+const APP_VERSION = "2.45.1";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -67,7 +67,7 @@ const EDIT_FIELDS = {
     { key: "date",     label: "Date", input: "date" },
     { key: "sesi",     label: "Session", options: SESI_ORDER },
     { key: "shift",    label: "Shift", options: SHIFT_NAMES, src: true },
-    { key: "item",     label: "Item", src: true, dynamicOptions: posMenuNames },
+    { key: "item",     label: "Item", combo: true, dynamicOptions: posMenuNames },
     { key: "target",   label: "Target", input: "number" },
     { key: "satuan",   label: "Unit (e.g. portion/server)", src: true }
   ],
@@ -1715,6 +1715,12 @@ function fieldInput(sheetKey, f, v) {
   if (f.input === "readonly") return '<input class="input" type="text" readonly ' + key + ' value="' + esc(v) + '">';
   if (f.input === "url") return '<input class="input" type="url" ' + key + ' value="' + esc(v) + '" placeholder="https://...">';
   if (f.input === "multi") return '<textarea class="input" rows="4" ' + key + '>' + esc(v) + '</textarea>';
+  if (f.combo) {
+    // Type to search the list; a name that is not in the list can still be typed.
+    const listId = "dl-" + sheetKey + "-" + f.key;
+    return '<input class="input" type="text" list="' + listId + '" autocomplete="off" ' + key + ' value="' + esc(v) + '" placeholder="Type to search">' +
+      '<datalist id="' + listId + '">' + optionList(sheetKey, f).map(o => '<option value="' + esc(o) + '"></option>').join("") + '</datalist>';
+  }
   if (f.options || f.src || f.dynamicOptions) return selectHtml(sheetKey, f, v);
   return '<input class="input" type="text" ' + key + ' value="' + esc(v) + '">';
 }
