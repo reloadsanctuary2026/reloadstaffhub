@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.58.0";
+const APP_VERSION = "2.60.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -636,7 +636,7 @@ function viewHome() {
 }
 
 /** One column on Home: title + add button, then its content. */
-/** Adds the missing session rows (Morning M6+M8, Afternoon M11+MD12+MD13, Evening E2) for today. Editors only. */
+/** Adds the missing session rows (Morning M6+M8, Afternoon M11+MD12, Evening E2) for today. Editors only. */
 async function fillUpsellShifts() {
   try {
     const res = await api("fillUpsellSessionsForDate", [sessionToken, isoDate(new Date())]);
@@ -1811,17 +1811,13 @@ function checksHtml(f, v) {
 }
 
 /** The "+ New…" box appears only when selected. */
-/** Shifts that each session covers. Adding a session with no shift chosen makes one row per shift. */
-const SESSION_SHIFTS = { "Morning": ["M6", "M8"], "Afternoon": ["M11", "MD12", "MD13"], "Evening": ["E2"] };
+/** The only Upsell shifts. Morning = M6 and M8, Afternoon = M11 and MD12, Evening = E2. Same as UPSELL_SESSION_SHIFTS in Code.gs. */
+const SESSION_SHIFTS = { "Morning": ["M6", "M8"], "Afternoon": ["M11", "MD12"], "Evening": ["E2"] };
 
-/** Session follows the shift: below M11 = Morning, M11 and MD12 = Afternoon, E = Evening. "" if unknown. */
+/** The session that owns a shift, read from SESSION_SHIFTS. "" if the shift is not an Upsell shift. */
 function sessionForShift(shift) {
   const s = String(shift || "").trim().toUpperCase();
-  const m = s.match(/^M(\d+)$/);
-  if (m) return Number(m[1]) < 11 ? "Morning" : "Afternoon";
-  if (/^MD\d+$/.test(s)) return "Afternoon";
-  if (s.charAt(0) === "E") return "Evening";
-  return "";
+  return Object.keys(SESSION_SHIFTS).find(k => SESSION_SHIFTS[k].indexOf(s) !== -1) || "";
 }
 
 /** Set the Session dropdown of the Upsell form from the chosen Shift (the user can still change it). */
@@ -1918,20 +1914,15 @@ async function saveForm() {
   try {
     const newValues = readForm();
     if (mode === "add") {
-      // Upsell: the shifts come from the session automatically (Morning = M6 + M8, and so on).
-      const shifts = sheetKey === "upsell" && SESSION_SHIFTS[newValues.sesi]
-        ? SESSION_SHIFTS[newValues.sesi] : [newValues.shift];
-      // One call per shift. A failed shift does not stop the others, so a retry only adds what is missing.
-      const failed = [];
-      for (const sh of shifts) {
-        try {
-          await api("addRow", [sessionToken, sheetKey, Object.assign({}, newValues, { shift: sh })]);
-        } catch (err) {
-          failed.push(sh + " (" + err.message + ")");
-        }
+      if (sheetKey === "upsell") {
+        // One call for all shifts of the session: all rows are written, or none. Safe to press again.
+        const res = (await api("addUpsellItem", [sessionToken, newValues])) || {};
+        const added = res.added || [], skipped = res.skipped || [];
+        toast(added.length ? "Added " + added.length + " row(s): " + added.join(", ") + (skipped.length ? " (" + skipped.join(", ") + " already there)" : "") : "Already there. Nothing added.");
+      } else {
+        await api("addRow", [sessionToken, sheetKey, newValues]);
+        toast("Added.");
       }
-      if (failed.length) throw new Error("Not added: " + failed.join(", ") + ". Fill missing shifts on Home fixes the rest.");
-      toast(shifts.length > 1 ? "Added " + shifts.length + " rows (" + shifts.join(", ") + ")." : "Added.");
     } else {
       const res = (await api("updateRow", [sessionToken, sheetKey, row, oldValues, newValues])) || {};
       toast(res.changed === 0 ? "No changes." : "Saved.");
