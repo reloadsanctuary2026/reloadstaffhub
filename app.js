@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.43.0";
+const APP_VERSION = "2.44.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -67,7 +67,7 @@ const EDIT_FIELDS = {
     { key: "date",     label: "Date", input: "date" },
     { key: "sesi",     label: "Session", options: SESI_ORDER },
     { key: "shift",    label: "Shift", options: SHIFT_NAMES, src: true },
-    { key: "item",     label: "Item" },
+    { key: "item",     label: "Item", src: true, dynamicOptions: posMenuNames },
     { key: "target",   label: "Target", input: "number" },
     { key: "satuan",   label: "Unit (e.g. portion/server)", src: true }
   ],
@@ -363,10 +363,10 @@ function endSession() {
 }
 
 /** Sheets that may be missing from the backend response are treated as empty. */
-const DATA_KEYS = ["importantInfo", "upsell", "bulletin", "inspiration", "food", "beverage", "sop", "teams", "about", "guests", "academy", "bulletinTypes"];
+const DATA_KEYS = ["importantInfo", "upsell", "bulletin", "inspiration", "food", "beverage", "sop", "teams", "about", "guests", "academy", "bulletinTypes", "posMenus"];
 
 /* Data is loaded per section. Home loads at login. Each tab loads when opened, then is kept. */
-const HOME_DATA = ["guests", "bulletin", "upsell", "inspiration", "bulletinTypes"];
+const HOME_DATA = ["guests", "bulletin", "upsell", "inspiration", "bulletinTypes", "posMenus"];
 const TAB_DATA = { food: ["food"], beverage: ["beverage"], sop: ["sop"], academy: ["academy"], teams: ["teams"], about: ["about"], tracker: ["upsell", "posMap"] };
 const TAB_CATEGORY_FIELD = { food: "category", beverage: "category", sop: "category", academy: "category", teams: "department" };
 let loadedKeys = {};
@@ -1592,6 +1592,7 @@ function showForm(title, values, canDelete) {
   const sheetKey = formState.sheetKey;
   document.getElementById("editForm").innerHTML =
     EDIT_FIELDS[sheetKey].map(f => fieldHtml(sheetKey, f, values[f.key])).join("");
+  if (formState.mode === "add") syncUpsellSession();   // new row: session follows the default shift
   document.getElementById("editTitle").innerText = title;
   document.getElementById("editError").innerText = "";
   setFormBusy(false);
@@ -1700,7 +1701,7 @@ function fieldInput(sheetKey, f, v) {
   if (f.input === "readonly") return '<input class="input" type="text" readonly ' + key + ' value="' + esc(v) + '">';
   if (f.input === "url") return '<input class="input" type="url" ' + key + ' value="' + esc(v) + '" placeholder="https://...">';
   if (f.input === "multi") return '<textarea class="input" rows="4" ' + key + '>' + esc(v) + '</textarea>';
-  if (f.options || f.src) return selectHtml(sheetKey, f, v);
+  if (f.options || f.src || f.dynamicOptions) return selectHtml(sheetKey, f, v);
   return '<input class="input" type="text" ' + key + ' value="' + esc(v) + '">';
 }
 
@@ -1743,6 +1744,32 @@ function checksHtml(f, v) {
 }
 
 /** The "+ New…" box appears only when selected. */
+/** Session follows the shift: below M11 = Morning, M11 and MD12 = Afternoon, E = Evening. "" if unknown. */
+function sessionForShift(shift) {
+  const s = String(shift || "").trim().toUpperCase();
+  const m = s.match(/^M(\d+)$/);
+  if (m) return Number(m[1]) < 11 ? "Morning" : "Afternoon";
+  if (/^MD\d+$/.test(s)) return "Afternoon";
+  if (s.charAt(0) === "E") return "Evening";
+  return "";
+}
+
+/** Set the Session dropdown of the Upsell form from the chosen Shift (the user can still change it). */
+function syncUpsellSession() {
+  if (!formState || formState.sheetKey !== "upsell") return;
+  const shift = document.querySelector('#editForm select[data-key="shift"]');
+  const session = document.querySelector('#editForm select[data-key="sesi"]');
+  if (!shift || !session) return;
+  const s = sessionForShift(shift.value);
+  if (s) session.value = s;
+}
+
+/** POS menu names for the Upsell item dropdown (from 16_PosMenus). */
+function posMenuNames() {
+  return (appData && appData.posMenus ? appData.posMenus : []).map(r => r.name).filter(Boolean)
+    .sort((a, b) => a.localeCompare(b));
+}
+
 function onFormChange(e) {
   if (e.target.matches && e.target.matches('input[type="file"][data-file]')) {
     onFileChosen(e.target);
@@ -1750,6 +1777,7 @@ function onFormChange(e) {
   }
   const sel = e.target;
   if (!sel.matches || !sel.matches("select[data-key]")) return;
+  if (sel.dataset.key === "shift") syncUpsellSession();
   const box = document.querySelector('#editForm [data-new-for="' + sel.dataset.key + '"]');
   if (!box) return;
   const isNew = sel.value === "__new__";

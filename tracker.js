@@ -420,6 +420,7 @@ async function onTrackerSales(input) {
   try {
     tracker.lines = await parseSalesFile(file);
     tracker.salesName = file.name;
+    saveMenuNamesFromLines(tracker.lines);
     const dates = trackerDates();
     tracker.date = dates.length ? dates[dates.length - 1] : "";
   } catch (e) {
@@ -428,6 +429,18 @@ async function onTrackerSales(input) {
   }
   tracker.busy = "";
   renderTab();
+}
+
+/** Menu names from the POS report go to 16_PosMenus, so the Upsell item dropdown can use them. */
+function saveMenuNamesFromLines(lines) {
+  const names = [];
+  lines.forEach(function (l) {
+    if (l.menu && names.indexOf(l.menu) === -1) names.push(l.menu);
+  });
+  if (!names.length) return;
+  api("saveMenuNames", [sessionToken, names])
+    .then(function (r) { if (r.added) toast(r.added + " new menu name(s) added to the item list."); })
+    .catch(function (e) { if (!isSessionExpired(e)) toast(e.message); });
 }
 
 async function onTrackerRoster(input) {
