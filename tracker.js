@@ -755,7 +755,7 @@ let schedule = {
   tabs: null, tab: "", data: null, loadingTabs: false, loadingTab: "", error: "",
   editing: false, countDay: null,
   pending: {}, pendingOrder: [], saving: false, lastBatch: null,
-  winStart: null, winTab: "", showLeave: false, leave: null
+  winStart: null, winTab: "", showLeave: false, leave: null, mobileDay: null
 };
 
 /** Month names as the schedule tabs write them (English or Indonesian, e.g. "MEI 2026" for May). */
@@ -1086,8 +1086,43 @@ function leavePanelHtml() {
     '<tbody>' + rows + '</tbody></table></div></div>';
 }
 
+/** Phones get a day-by-day list. Editing is for the computer. */
+function isPhoneWidth() {
+  return !!(window.matchMedia && window.matchMedia("(max-width: 560px)").matches);
+}
+
+function setScheduleMobileDay(i) {
+  schedule.mobileDay = i;
+  renderTab();
+}
+
+function viewScheduleMobile(saved) {
+  const n = saved.days.length;
+  let idx = schedule.mobileDay;
+  if (idx === null || idx === undefined || idx >= n) idx = Math.max(0, Math.min(new Date().getDate() - 1, n - 1));
+  const day = saved.days[idx];
+  const counts = scheduleCounts(saved, idx);
+  const roles = SCHEDULE_ROLE_ORDER.filter(r => counts[r]);
+  const strip = '<div class="sm-days">' + saved.days.map((x, i) =>
+    '<button type="button" class="sm-day' + (i === idx ? ' active' : '') + '" onclick="setScheduleMobileDay(' + i + ')"><small>' + esc(x.weekday) + '</small>' + x.day + '</button>').join("") + '</div>';
+  const summary = '<p class="sm-summary">' + (roles.length ? roles.map(r => esc(r) + ' ' + sumCounts(counts[r])).join(" · ") : 'Nobody is working this day.') + '</p>';
+  let list = "", block = "";
+  saved.people.forEach(p => {
+    const c = p.cells[idx];
+    if (p.block !== block) {
+      block = p.block;
+      list += '<div class="sm-block sch-block-' + block.toLowerCase() + '">' + esc(block) + '</div>';
+    }
+    list += '<div class="sm-row' + (isMySchedule(p.name) ? ' mine' : '') + '"><div class="sm-who"><strong>' + esc(p.name) +
+      '</strong><small>' + esc(p.role || p.position) + '</small></div><span class="sm-code ' + scheduleCellClass(c) + '">' + esc(c.code || "–") + '</span></div>';
+  });
+  return strip + '<div class="sm-head"><strong>' + day.day + ' ' + esc(day.weekday) + '</strong></div>' + summary +
+    '<div class="sm-list">' + list + '</div>' +
+    '<p class="sch-legend">Read-only on phone. Open the Schedule on a computer to edit.</p>';
+}
+
 function viewSchedule() {
-  const edit = canEdit();
+  const edit = canEdit() && !isPhoneWidth();
   let html = '<div class="page-heading"><h2>Schedule</h2><p>Restaurant, Host, and Cashier shifts. Your row is highlighted.</p></div>';
   if (schedule.error) return html + '<div class="empty">Could not load the schedule: ' + esc(schedule.error) + '</div>';
   if (!schedule.tabs) {
@@ -1104,7 +1139,7 @@ function viewSchedule() {
       ? '<button type="button" class="ghost small" onclick="undoLastScheduleSave()">Undo last save</button>' : '') +
     (edit ? '<button type="button" class="ghost small" onclick="toggleScheduleLeave()">' + (schedule.showLeave ? 'Hide credits' : 'Credits') + '</button>' : '') +
     '</div>';
-  html += schedulePendingBarHtml();
+  if (!isPhoneWidth()) html += schedulePendingBarHtml();
 
   if (!schedule.data || schedule.data.tab !== schedule.tab) {
     loadSchedule(schedule.tab);
@@ -1112,6 +1147,7 @@ function viewSchedule() {
   }
 
   const saved = schedule.data;
+  if (isPhoneWidth()) return html + viewScheduleMobile(saved);
   const full = scheduleEffective(saved);
   const n = full.days.length;
   const w = scheduleWindow(n);
