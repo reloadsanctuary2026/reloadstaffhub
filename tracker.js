@@ -194,6 +194,11 @@ function matchesItem(line, item) {
   return menuKey(line.menu) === it || menuKey(line.custom) === it;
 }
 
+/** Protein Bar and PB are another outlet. Their menus are not used for the server upsell. */
+function isOtherOutlet(name) {
+  return /\(\s*(protein bar|pb)\s*\)/i.test(String(name || ""));
+}
+
 /** Menu name for the dropdown: without (PACKAGE), and each name once. */
 function dropdownName(s) {
   return String(s == null ? "" : s).replace(/\s*\(package\)\s*$/i, "").replace(/\s+/g, " ").trim();
@@ -454,7 +459,7 @@ function saveMenuNamesFromLines(lines) {
   const names = [];
   lines.forEach(function (l) {
     const name = dropdownName(l.menu);
-    if (name && names.indexOf(name) === -1) names.push(name);
+    if (name && !isOtherOutlet(l.menu) && names.indexOf(name) === -1) names.push(name);
   });
   if (!names.length) return;
   api("saveMenuNames", [sessionToken, names])

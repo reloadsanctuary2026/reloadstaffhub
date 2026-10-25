@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.44.2";
+const APP_VERSION = "2.45.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -650,23 +650,18 @@ function upsellPanel() {
   const rows = appData.upsell.filter(r => isToday(r.date));
   if (!rows.length) return emptyState("No upsell for today.");
 
-  const now = currentShift();
-  const rank = name => (SHIFT_NAMES.indexOf(name) === -1 ? 99 : SHIFT_NAMES.indexOf(name));  // ordered by SHIFT_START
-  const names = rows.map(r => r.shift || "")
-    .filter((x, i, arr) => arr.indexOf(x) === i)
-    .sort((a, b) => ((b === now) - (a === now)) || (rank(a) - rank(b)));
+  const rank = name => (SHIFT_NAMES.indexOf(name) === -1 ? 99 : SHIFT_NAMES.indexOf(name));
+  const sessions = SESI_ORDER.concat(rows.map(r => r.sesi || "").filter(s => SESI_ORDER.indexOf(s) === -1 && s));
+  const uniq = sessions.filter((s, i) => sessions.indexOf(s) === i);
 
-  return names.map(name => {
-    const group = rows.filter(r => (r.shift || "") === name);
-    const isNow = name === now;
-    return '<div class="card upsell-session' + (isNow ? ' now' : '') + '">' +
-      '<div class="row-between"><strong>' + esc(name || "No shift") + '</strong>' +
-        '<span>' +
-          (group[0].sesi ? '<span class="badge">' + esc(group[0].sesi) + '</span> ' : '') +
-          (isNow ? '<span class="badge now-badge">Now</span>' : '') +
-        '</span></div>' +
+  return uniq.map(function (sesi) {
+    const group = rows.filter(r => (r.sesi || "") === sesi)
+      .sort((a, b) => String(a.item).localeCompare(String(b.item)) || (rank(a.shift) - rank(b.shift)));
+    if (!group.length) return "";
+    return '<div class="card upsell-session">' +
+      '<div class="row-between"><strong>' + esc(sesi || "No session") + '</strong><span class="muted small">' + group.length + ' item' + (group.length > 1 ? "s" : "") + '</span></div>' +
       group.map(r =>
-        '<div class="upsell-line"><span>' + esc(r.item) + '</span>' +
+        '<div class="upsell-line"><span>' + esc(r.item) + ' <small class="muted">' + esc(r.shift || "") + '</small></span>' +
         '<span class="price">' + esc(r.target) + ' ' + esc(r.satuan) + '</span>' +
         editBtn("upsell", r) + '</div>'
       ).join("") +
@@ -1787,6 +1782,7 @@ function syncUpsellSession() {
 function posMenuNames() {
   const seen = {};
   return (appData && appData.posMenus ? appData.posMenus : []).map(r => String(r.name || "").replace(/\s*\(package\)\s*$/i, "").trim())
+    .filter(n => !isOtherOutlet(n))
     .filter(function (n) { if (!n || seen[n.toLowerCase()]) return false; seen[n.toLowerCase()] = true; return true; })
     .sort((a, b) => a.localeCompare(b));
 }
