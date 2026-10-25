@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.48.0";
+const APP_VERSION = "2.48.1";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -153,7 +153,7 @@ let bulletinView = "list";
 let bulletinMonth = null;   // { y, m } month currently shown in the calendar
 let bulletinDay = null;     // "YYYY-MM-DD" day selected in the calendar
 let bulletinShown = 0;   // set when the Staff Bulletin page is opened
-const GUESTS_PAGE_SIZE = 12;
+const GUESTS_PAGE_SIZE = 16;   // 2 rows of 8 on desktop
 let guestFilter = { q: "", cat: -1, sort: "newest", view: "grid", status: "all", shown: GUESTS_PAGE_SIZE };
 let formState = null;   // { mode: "add" | "edit", sheetKey, row, original }
 

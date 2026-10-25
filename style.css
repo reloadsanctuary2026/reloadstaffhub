@@ -35,6 +35,7 @@ body {
 
 .hidden { display: none !important; }
 .container { max-width: none; margin: 0 auto; padding: 0 16px; }
+@media (min-width: 900px) { .container { padding: 0 clamp(24px, 3vw, 56px); } }
 .muted { color: var(--muted); }
 .small { font-size: 13px; }
 .pre { white-space: pre-line; margin: 6px 0 0; color: var(--text); }
@@ -237,7 +238,7 @@ main#app { padding-top: 22px; padding-bottom: 48px; }
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 18px;
+  padding: 22px;
 }
 
 /* Hero di Home */
@@ -472,10 +473,12 @@ details.inactive-group[open] summary::before { content: "▾  "; }
 
 /* Upsell per item */
 .upsell-session { margin-bottom: 12px; }
+/* Item di kiri, portion rata kanan dalam kolom tetap (angkanya lurus ke bawah), tombol Edit di ujung */
 .upsell-line {
-  display: flex; justify-content: space-between; align-items: center; gap: 10px;
-  padding: 8px 0; border-bottom: 1px solid var(--border);
+  display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; align-items: center; gap: 16px;
+  padding: 14px 0; border-bottom: 1px solid var(--border);
 }
+.upsell-line > .price { text-align: right; }
 .upsell-line:last-child { border-bottom: 0; }
 ul.plain { list-style: none; padding: 0; margin: 8px 0 0; }
 ul.plain li { padding: 8px 0; border-bottom: 1px solid var(--border); }
@@ -497,7 +500,6 @@ ul.plain li:last-child { border-bottom: 0; }
 /* HP: target sentuh lebih besar, baris upsell boleh turun baris */
 @media (max-width: 560px) {
   .edit-btn, .add-btn { min-height: 40px; padding: 8px 14px; }
-  .upsell-line { flex-wrap: wrap; }
   .home-col .section-head { flex-wrap: wrap; }
 }
 
@@ -560,6 +562,7 @@ ul.plain li:last-child { border-bottom: 0; }
 .seg button { background: var(--surface); color: var(--muted); border: 0; padding: 0 14px; font-size: 16px; cursor: pointer; min-height: 48px; }
 .seg button.on { background: var(--text); color: var(--bg); }
 .guest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+@media (min-width: 1200px) { .guest-grid { grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 16px; } }
 .guest-tile {
   display: flex; flex-direction: column; text-align: left; padding: 0; overflow: hidden;
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
