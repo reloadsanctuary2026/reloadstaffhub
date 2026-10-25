@@ -754,7 +754,8 @@ async function downloadTrackerReport() {
 let schedule = {
   tabs: null, tab: "", data: null, loadingTabs: false, loadingTab: "", error: "",
   editing: false, countDay: null,
-  pending: {}, pendingOrder: [], saving: false, lastBatch: null
+  pending: {}, pendingOrder: [], saving: false, lastBatch: null,
+  winStart: null, winTab: "", showLeave: false, leave: null
 };
 
 /** Month names as the schedule tabs write them (English or Indonesian, e.g. "MEI 2026" for May). */
@@ -1028,6 +1029,63 @@ function schedulePendingBarHtml() {
     '</span></div>';
 }
 
+const SCHEDULE_WINDOW_DAYS = 14;
+
+/** Editors see two weeks at a time. Staff see the whole month. */
+function scheduleWindow(n) {
+  if (!canEdit()) return { a: 0, b: n };
+  if (schedule.winStart === null || schedule.winStart === undefined || schedule.winTab !== schedule.tab) {
+    const today = new Date().getDate();
+    schedule.winStart = Math.max(0, Math.min(today - 1, n - SCHEDULE_WINDOW_DAYS));
+    schedule.winTab = schedule.tab;
+  }
+  const a = Math.max(0, Math.min(schedule.winStart, n - SCHEDULE_WINDOW_DAYS));
+  return { a: a, b: Math.min(n, a + SCHEDULE_WINDOW_DAYS) };
+}
+
+function shiftScheduleWindow(step) {
+  schedule.winStart += step * SCHEDULE_WINDOW_DAYS;
+  renderTab();
+}
+
+function toggleScheduleLeave() {
+  schedule.showLeave = !schedule.showLeave;
+  if (schedule.showLeave && !schedule.leave) loadScheduleLeave();
+  renderTab();
+}
+
+function loadScheduleLeave() {
+  const tab = schedule.tab;
+  api("getLeaveSummary", [sessionToken, tab])
+    .then(function (rows) {
+      schedule.leave = { tab: tab, rows: rows };
+      renderTab();
+    })
+    .catch(function (e) {
+      if (isSessionExpired(e)) return handleApiError(e);
+      schedule.leave = { tab: tab, rows: [], error: e.message };
+      renderTab();
+    });
+}
+
+/** Credits for each person: EO left this month, AL left, and DP left with its expiry dates. */
+function leavePanelHtml() {
+  if (!schedule.showLeave) return "";
+  if (!schedule.leave || schedule.leave.tab !== schedule.tab) {
+    return '<div class="sch-count"><p class="muted">Loading credits…</p></div>';
+  }
+  if (schedule.leave.error) return '<div class="sch-count"><p class="muted">Could not load credits: ' + esc(schedule.leave.error) + '</p></div>';
+  const rows = schedule.leave.rows.map(r =>
+    '<tr' + (r.matched ? '' : ' class="sch-unmatched"') + '><td class="sch-name">' + esc(r.name) + (r.matched ? '' : ' <small>(not in HR)</small>') + '</td>' +
+    '<td>' + esc(r.role) + '</td><td>' + r.eoLeft + '</td><td>' + r.alLeft + '</td><td>' + r.dpLeft + '</td>' +
+    '<td class="sch-left">' + esc(r.dpExpires.join(", ") || "–") + '</td>' +
+    '<td class="sch-left">' + esc(r.recent.map(x => x[0] + " " + x[1]).join(" · ") || "–") + '</td></tr>').join("");
+  return '<div class="sch-count"><strong>Leave credits</strong>' +
+    '<div class="sch-wrap"><table class="sch sch-leave"><thead><tr><th class="sch-name">Name</th><th>Role</th>' +
+    '<th>EO left (this month)</th><th>AL left</th><th>DP left</th><th class="sch-left">DP expires</th><th class="sch-left">Recent</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table></div></div>';
+}
+
 function viewSchedule() {
   const edit = canEdit();
   let html = '<div class="page-heading"><h2>Schedule</h2><p>Restaurant, Host, and Cashier shifts. Your row is highlighted.</p></div>';
@@ -1044,6 +1102,7 @@ function viewSchedule() {
     (edit && !schedule.editing ? '<button type="button" class="ghost small" onclick="toggleScheduleEdit()">Edit schedule</button>' : '') +
     (edit && schedule.lastBatch && schedule.lastBatch.tab === schedule.tab && !scheduleHasChanges() && !schedule.editing
       ? '<button type="button" class="ghost small" onclick="undoLastScheduleSave()">Undo last save</button>' : '') +
+    (edit ? '<button type="button" class="ghost small" onclick="toggleScheduleLeave()">' + (schedule.showLeave ? 'Hide credits' : 'Credits') + '</button>' : '') +
     '</div>';
   html += schedulePendingBarHtml();
 
@@ -1053,10 +1112,23 @@ function viewSchedule() {
   }
 
   const saved = schedule.data;
-  const d = scheduleEffective(saved);
+  const full = scheduleEffective(saved);
+  const n = full.days.length;
+  const w = scheduleWindow(n);
+  const d = {
+    days: full.days.slice(w.a, w.b),
+    people: full.people.map(p => Object.assign({}, p, { cells: p.cells.slice(w.a, w.b) }))
+  };
+  if (edit) {
+    html += '<div class="sch-toolbar sch-window"><button type="button" class="ghost small" onclick="shiftScheduleWindow(-1)">◀ Previous 2 weeks</button>' +
+      '<span class="muted">Days ' + d.days[0].day + '–' + d.days[d.days.length - 1].day + ' of ' + n + '</span>' +
+      '<button type="button" class="ghost small" onclick="shiftScheduleWindow(1)">Next 2 weeks ▶</button></div>';
+  }
+  html += leavePanelHtml();
+
   const editing = edit && schedule.editing && !schedule.saving;
   const head = '<tr><th class="sch-name">Name</th><th class="sch-role">Role</th>' +
-    d.days.map((x, i) => '<th class="sch-day' + (schedule.countDay === i ? ' picked' : '') + '" onclick="setScheduleCountDay(' + i + ')">' +
+    d.days.map((x, i) => '<th class="sch-day' + (schedule.countDay === i + w.a ? ' picked' : '') + '" onclick="setScheduleCountDay(' + (i + w.a) + ')">' +
       x.day + '<small>' + esc(x.weekday) + '</small></th>').join("") + '</tr>';
   let body = "", block = "";
   d.people.forEach(p => {
@@ -1069,14 +1141,15 @@ function viewSchedule() {
     body += '<tr class="sch-row' + (isMySchedule(p.name) ? ' mine' : '') + '">' +
       '<td class="sch-name">' + esc(p.name) + '</td><td class="sch-role">' + esc(p.role || p.position) + '</td>' +
       p.cells.map((c, i) => {
-        const isPending = schedule.pending[scheduleKey(p.row, i)] !== undefined;
+        const full_i = i + w.a;
+        const isPending = schedule.pending[scheduleKey(p.row, full_i)] !== undefined;
         return '<td class="' + scheduleCellClass(c) + (editing ? ' sch-edit' : '') + (isPending ? ' sch-pending' : '') + '"' +
-          (editing ? ' onclick="openScheduleCell(' + p.row + ',' + i + ')"' : '') + '>' + esc(c.code) + '</td>';
+          (editing ? ' onclick="openScheduleCell(' + p.row + ',' + full_i + ')"' : '') + '>' + esc(c.code) + '</td>';
       }).join("") + '</tr>';
   });
 
   const editHint = editing ? 'Changes stay in draft until you press Save. PH, DP, EO, and AL rules are checked on save. ' : '';
-  return html + countPanelHtml(d) +
+  return html + countPanelHtml(full) +
     '<div class="sch-wrap"><table class="sch"><thead>' + head + '</thead><tbody>' + body + '</tbody><tfoot>' + scheduleFooterHtml(d) + '</tfoot></table></div>' +
     '<p class="sch-legend">' + editHint + 'Shaded = shift. RS = Reload Social event duty. OFF, OFF/R, DC (sick), EO (extra off), NPL (unpaid leave), DP, AL (annual leave), and PH = no floor shift.</p>';
 }

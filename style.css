@@ -880,3 +880,8 @@ body { overflow-wrap: anywhere; }
 .sch-pending-bar button[disabled] { opacity: 0.45; cursor: not-allowed; }
 .sch-picker-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 6px; }
 .sch-pick.current { border-color: var(--accent); }
+
+.sch-window { margin: 10px 0 0; }
+.sch-left { text-align: left !important; white-space: normal; min-width: 160px; }
+.sch-unmatched td { color: var(--muted); }
+.sch-leave td, .sch-leave th { white-space: nowrap; }
