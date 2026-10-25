@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.45.1";
+const APP_VERSION = "2.46.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -66,7 +66,7 @@ const EDIT_FIELDS = {
   upsell: [
     { key: "date",     label: "Date", input: "date" },
     { key: "sesi",     label: "Session", options: SESI_ORDER },
-    { key: "shift",    label: "Shift", options: SHIFT_NAMES, src: true },
+    { key: "shift",    label: "Shift", options: SHIFT_NAMES, src: true, blankDefault: true },
     { key: "item",     label: "Item", combo: true, dynamicOptions: posMenuNames },
     { key: "target",   label: "Target", input: "number" },
     { key: "satuan",   label: "Unit (e.g. portion/server)", src: true }
@@ -1661,6 +1661,7 @@ function setFormBusy(busy, activeId, label) {
 
 /** Initial value when adding a new row. */
 function defaultValue(sheetKey, f) {
+  if (f.blankDefault) return "";
   if (f.dynamicOptions) return f.dynamicOptions()[0] || "";
   if (f.input === "date" || f.input === "today") return formatSheetDate(new Date());
   if (f.input === "phone") return "62";
@@ -1764,6 +1765,9 @@ function checksHtml(f, v) {
 }
 
 /** The "+ New…" box appears only when selected. */
+/** Shifts that each session covers. Adding a session with no shift chosen makes one row per shift. */
+const SESSION_SHIFTS = { "Morning": ["M6", "M8"], "Afternoon": ["M11", "MD12"], "Evening": ["E2"] };
+
 /** Session follows the shift: below M11 = Morning, M11 and MD12 = Afternoon, E = Evening. "" if unknown. */
 function sessionForShift(shift) {
   const s = String(shift || "").trim().toUpperCase();
@@ -1868,8 +1872,13 @@ async function saveForm() {
   try {
     const newValues = readForm();
     if (mode === "add") {
-      await api("addRow", [sessionToken, sheetKey, newValues]);
-      toast("Added.");
+      // Upsell: no shift chosen = one row per shift of the session (Morning = M6 + M8, and so on).
+      const shifts = sheetKey === "upsell" && !newValues.shift && SESSION_SHIFTS[newValues.sesi]
+        ? SESSION_SHIFTS[newValues.sesi] : [newValues.shift];
+      for (const sh of shifts) {
+        await api("addRow", [sessionToken, sheetKey, Object.assign({}, newValues, { shift: sh })]);
+      }
+      toast(shifts.length > 1 ? "Added " + shifts.length + " rows (" + shifts.join(", ") + ")." : "Added.");
     } else {
       const res = (await api("updateRow", [sessionToken, sheetKey, row, oldValues, newValues])) || {};
       toast(res.changed === 0 ? "No changes." : "Saved.");
