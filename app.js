@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.48.1";
+const APP_VERSION = "2.48.2";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -589,7 +589,7 @@ function renderActiveView() {
   if (bulletinLanding) return viewBulletinLanding();
 
   let html = "";
-  if (activeTab === "home")          html = upsellSummaryHtml() + viewHome();
+  if (activeTab === "home")          html = viewHome();
   else if (activeTab === "food")     html = viewSearchable("food");
   else if (activeTab === "beverage") html = viewSearchable("beverage");
   else if (activeTab === "sop")      html = viewSearchable("sop");
@@ -610,7 +610,7 @@ function viewHome() {
   const guests = newestFirst(appData.guests.filter(isActive)).slice(0, GUEST_HOME_LIMIT);
   const news = newestFirst(appData.bulletin.filter(isActive)).slice(0, BULLETIN_HOME_LIMIT);
 
-  return '<section class="hero">' +
+  return '<div class="home-top"><section class="hero">' +
       '<div class="hero-greet">Good ' + dayPart().word + '</div>' +
       '<div class="hero-name">' + esc(greetingName()) + '</div>' +
       (quote
@@ -619,7 +619,7 @@ function viewHome() {
           editBtn("inspiration", quote)
         : '') +
       addBtn("inspiration", "+ Quote") +
-    '</section>' +
+    '</section>' + upsellSummaryHtml() + '</div>' +
 
     '<div class="home-grid">' +
       homeCol("Our Guests", "guests",

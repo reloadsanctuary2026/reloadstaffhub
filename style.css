@@ -818,4 +818,13 @@ body { overflow-wrap: anywhere; }
 .chart-legend .key-target { border: 1.5px dashed var(--muted); }
 .tracker-save { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
 .home-upsell { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 16px; font-size: 15px; }
+/* Home top: quote di kiri, ringkasan kemarin di kanan (desktop). Di HP ditumpuk. */
+.home-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+.home-top > .hero, .home-top > .home-upsell { margin: 0; }
+.home-top > .home-upsell { display: flex; align-items: center; padding: 22px 26px; }
+@media (min-width: 900px) {
+  .home-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .home-top > .hero { display: flex; flex-direction: column; justify-content: center; }
+  .home-top > .home-upsell { font-size: 17px; line-height: 1.6; }
+}
 .home-upsell strong { color: var(--accent); }
