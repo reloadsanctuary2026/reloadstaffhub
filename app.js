@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.46.0";
+const APP_VERSION = "2.47.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -1606,7 +1606,11 @@ function showForm(title, values, canDelete) {
   const sheetKey = formState.sheetKey;
   document.getElementById("editForm").innerHTML =
     EDIT_FIELDS[sheetKey].map(f => fieldHtml(sheetKey, f, values[f.key])).join("");
-  if (formState.mode === "add") syncUpsellSession();   // new row: session follows the default shift
+  if (formState.mode === "add" && sheetKey === "upsell") {
+    // New rows: the shift comes from the session, so the Shift field is not shown.
+    const shiftField = document.querySelector('#editForm select[data-key="shift"]');
+    if (shiftField && shiftField.closest(".field")) shiftField.closest(".field").classList.add("hidden");
+  }
   document.getElementById("editTitle").innerText = title;
   document.getElementById("editError").innerText = "";
   setFormBusy(false);
@@ -1766,7 +1770,7 @@ function checksHtml(f, v) {
 
 /** The "+ New…" box appears only when selected. */
 /** Shifts that each session covers. Adding a session with no shift chosen makes one row per shift. */
-const SESSION_SHIFTS = { "Morning": ["M6", "M8"], "Afternoon": ["M11", "MD12"], "Evening": ["E2"] };
+const SESSION_SHIFTS = { "Morning": ["M6", "M8"], "Afternoon": ["M11", "MD12", "MD13"], "Evening": ["E2"] };
 
 /** Session follows the shift: below M11 = Morning, M11 and MD12 = Afternoon, E = Evening. "" if unknown. */
 function sessionForShift(shift) {
@@ -1872,8 +1876,8 @@ async function saveForm() {
   try {
     const newValues = readForm();
     if (mode === "add") {
-      // Upsell: no shift chosen = one row per shift of the session (Morning = M6 + M8, and so on).
-      const shifts = sheetKey === "upsell" && !newValues.shift && SESSION_SHIFTS[newValues.sesi]
+      // Upsell: the shifts come from the session automatically (Morning = M6 + M8, and so on).
+      const shifts = sheetKey === "upsell" && SESSION_SHIFTS[newValues.sesi]
         ? SESSION_SHIFTS[newValues.sesi] : [newValues.shift];
       for (const sh of shifts) {
         await api("addRow", [sessionToken, sheetKey, Object.assign({}, newValues, { shift: sh })]);
