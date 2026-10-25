@@ -147,6 +147,13 @@ function readShiftsFromItems(items, staff, shifts) {
 /* ---------- MATCHING ---------- */
 
 /** Challenge items for one date (names only). Targets are per shift, see shiftTarget. */
+/** Which dates do have Upsell Today items, so a wrong date is easy to spot. */
+function upsellDatesHint() {
+  const dates = [...new Set((appData.upsell || []).map(r => isoFromSheetDate(r.date)).filter(Boolean))].sort();
+  if (!dates.length) return " Tab 11_UpsellToday has no rows at all.";
+  return " Dates that do have items: " + dates.slice(-5).map(x => formatSheetDate(new Date(x + "T00:00:00"))).join(", ") + ".";
+}
+
 function challengeFor(dateIso) {
   const items = [];
   (appData.upsell || []).forEach(function (r) {
@@ -323,7 +330,7 @@ function viewTracker() {
           const parts = targetsByShift(tracker.date, it.item).map(t => t.shift + " " + t.target).join(" · ");
           return '<span class="tracker-item">' + esc(it.item) + ' <small>' + esc(parts || "no target") + '</small></span>';
         }).join("") + '</div>'
-      : '<p class="muted small">No challenge list for this date in tab 11_UpsellToday yet.</p>') +
+      : '<p class="muted small">No challenge list for ' + esc(tracker.date) + ' in tab 11_UpsellToday yet.' + upsellDatesHint() + '</p>') +
     '</div>';
 
   if (!items.length) return html;

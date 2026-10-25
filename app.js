@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.56.0";
+const APP_VERSION = "2.58.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -627,7 +627,8 @@ function viewHome() {
       homeCol("Our Guests", "guests",
         guests.length ? guests.map(guestCard).join("") : emptyState("No active guest notes."),
         '<button class="ghost small-link" type="button" onclick="openGuestsLanding()">View all</button>') +
-      homeCol("Upsell Today", "upsell", upsellPanel()) +
+      homeCol("Upsell Today", "upsell", upsellPanel(),
+        canEdit() ? '<button class="ghost small-link" type="button" onclick="fillUpsellShifts()">Fill missing shifts</button>' : '') +
       homeCol("Staff Bulletin", "bulletin",
         news.length ? news.map(bulletinCard).join("") : emptyState("No active bulletin yet."),
         '<button class="ghost small-link" type="button" onclick="openBulletinLanding()">View all</button>') +
@@ -635,6 +636,20 @@ function viewHome() {
 }
 
 /** One column on Home: title + add button, then its content. */
+/** Adds the missing session rows (Morning M6+M8, Afternoon M11+MD12+MD13, Evening E2) for today. Editors only. */
+async function fillUpsellShifts() {
+  try {
+    const res = await api("fillUpsellSessionsForDate", [sessionToken, isoDate(new Date())]);
+    const added = (res && res.added) || [], failed = (res && res.failed) || [];
+    if (failed.length) alert("Some rows were not added:\n" + failed.join("\n"));
+    toast(added.length ? "Added " + added.length + " missing row(s)." : "Nothing missing.");
+    refreshSheet("upsell");
+  } catch (e) {
+    if (isSessionExpired(e)) return handleApiError(e);
+    toast(e.message);
+  }
+}
+
 function homeCol(title, sheetKey, body, extra) {
   return '<section class="home-col">' + sectionHead(title, sheetKey, extra) + body + '</section>';
 }
@@ -1906,9 +1921,16 @@ async function saveForm() {
       // Upsell: the shifts come from the session automatically (Morning = M6 + M8, and so on).
       const shifts = sheetKey === "upsell" && SESSION_SHIFTS[newValues.sesi]
         ? SESSION_SHIFTS[newValues.sesi] : [newValues.shift];
+      // One call per shift. A failed shift does not stop the others, so a retry only adds what is missing.
+      const failed = [];
       for (const sh of shifts) {
-        await api("addRow", [sessionToken, sheetKey, Object.assign({}, newValues, { shift: sh })]);
+        try {
+          await api("addRow", [sessionToken, sheetKey, Object.assign({}, newValues, { shift: sh })]);
+        } catch (err) {
+          failed.push(sh + " (" + err.message + ")");
+        }
       }
+      if (failed.length) throw new Error("Not added: " + failed.join(", ") + ". Fill missing shifts on Home fixes the rest.");
       toast(shifts.length > 1 ? "Added " + shifts.length + " rows (" + shifts.join(", ") + ")." : "Added.");
     } else {
       const res = (await api("updateRow", [sessionToken, sheetKey, row, oldValues, newValues])) || {};
