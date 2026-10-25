@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.47.1";
+const APP_VERSION = "2.47.2";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -1600,7 +1600,13 @@ function openAdd(sheetKey, presetDate, menusFetched) {
   }
   formState = { mode: "add", sheetKey: sheetKey, row: null, original: blank };
   const restored = takeDraft("add", sheetKey, null);
-  showForm("Add " + SHEET_LABELS[sheetKey], restored || blank, false);
+  const values = restored || blank;
+  // A day picked on the calendar wins over the date of an older unsaved draft.
+  if (presetDate && restored) {
+    const dateField = EDIT_FIELDS[sheetKey].find(f => f.input === "date");
+    if (dateField) values[dateField.key] = blank[dateField.key];
+  }
+  showForm("Add " + SHEET_LABELS[sheetKey], values, false);
 }
 
 function openEdit(sheetKey, row) {
