@@ -751,7 +751,7 @@ async function downloadTrackerReport() {
 
 /* ---------- SCHEDULE (read-only, all staff) ---------- */
 
-let schedule = { tabs: null, tab: "", data: null, loadingTabs: false, loadingTab: "", error: "" };
+let schedule = { tabs: null, tab: "", data: null, loadingTabs: false, loadingTab: "", error: "", editing: false, countDay: null };
 
 /** Month names as the schedule tabs write them (English or Indonesian, e.g. "MEI 2026" for May). */
 const SCHEDULE_MONTHS = [["JAN"], ["FEB"], ["MAR"], ["APR"], ["MEI", "MAY"], ["JUN"], ["JUL"], ["AUG", "AGU"], ["SEP"], ["OCT", "OKT"], ["NOV"], ["DEC", "DES"]];
@@ -822,7 +822,75 @@ function scheduleCellClass(c) {
   return "";
 }
 
+const SCHEDULE_ROLE_ORDER = ["Manager", "SPV", "Server", "Runner", "Checker", "Hostess", "Cashier"];
+const SCHEDULE_SHIFT_ORDER = ["M6", "M6.30", "M7", "M8", "M9", "M10", "M11", "MD12", "MD13", "E2"];
+
+/** Working people per role and shift for one day. RS on its own is not a shift, so it is not counted. */
+function scheduleCounts(d, dayIdx) {
+  const out = {};
+  d.people.forEach(p => {
+    const c = p.cells[dayIdx];
+    if (!c || !c.shift || !p.role) return;
+    out[p.role] = out[p.role] || {};
+    out[p.role][c.shift] = (out[p.role][c.shift] || 0) + 1;
+  });
+  return out;
+}
+
+function sumCounts(obj) {
+  return Object.values(obj || {}).reduce((a, b) => a + b, 0);
+}
+
+/** Per-day totals under the grid: one row per role, and a total row. */
+function scheduleFooterHtml(d) {
+  const roles = SCHEDULE_ROLE_ORDER.filter(r => d.people.some(p => p.role === r));
+  const perDay = d.days.map((_, i) => scheduleCounts(d, i));
+  const rows = roles.map(r => '<tr class="sch-foot"><td class="sch-name">Working: ' + esc(r) + '</td><td></td>' +
+    perDay.map(c => '<td>' + (sumCounts(c[r]) || "") + '</td>').join("") + '</tr>').join("");
+  const totals = '<tr class="sch-foot sch-foot-total"><td class="sch-name"><strong>Working: total</strong></td><td></td>' +
+    perDay.map(c => '<td><strong>' + (roles.reduce((a, r) => a + sumCounts(c[r]), 0) || "") + '</strong></td>').join("") + '</tr>';
+  return rows + totals;
+}
+
+/** Count per shift for the day picked in the header: who works which hour, by role. */
+function countPanelHtml(d) {
+  const i = schedule.countDay;
+  if (i === null || i === undefined || !d.days[i]) {
+    return '<p class="sch-legend">Click a day number in the header to see the count per shift.</p>';
+  }
+  const day = d.days[i];
+  const counts = scheduleCounts(d, i);
+  const roles = SCHEDULE_ROLE_ORDER.filter(r => counts[r]);
+  if (!roles.length) {
+    return '<div class="sch-count"><strong>' + day.day + ' ' + esc(day.weekday) + '</strong><p class="muted">Nobody is working this day.</p></div>';
+  }
+  const rows = SCHEDULE_SHIFT_ORDER.map(s => {
+    const total = roles.reduce((a, r) => a + (counts[r][s] || 0), 0);
+    if (!total) return "";
+    return '<tr><td class="sch-name">' + s + '</td>' + roles.map(r => '<td>' + (counts[r][s] || "–") + '</td>').join("") +
+      '<td><strong>' + total + '</strong></td></tr>';
+  }).join("");
+  const totals = roles.map(r => '<td><strong>' + sumCounts(counts[r]) + '</strong></td>').join("");
+  const grand = roles.reduce((a, r) => a + sumCounts(counts[r]), 0);
+  return '<div class="sch-count"><strong>' + day.day + ' ' + esc(day.weekday) + ' · per shift</strong>' +
+    '<div class="sch-wrap"><table class="sch sch-count-table"><thead><tr><th class="sch-name">Shift</th>' +
+    roles.map(r => '<th>' + esc(r) + '</th>').join("") + '<th>Total</th></tr></thead><tbody>' + rows +
+    '</tbody><tfoot><tr class="sch-foot-total"><td class="sch-name"><strong>Total</strong></td>' + totals +
+    '<td><strong>' + grand + '</strong></td></tr></tfoot></table></div></div>';
+}
+
+function toggleScheduleEdit() {
+  schedule.editing = !schedule.editing;
+  renderTab();
+}
+
+function setScheduleCountDay(i) {
+  schedule.countDay = schedule.countDay === i ? null : i;
+  renderTab();
+}
+
 function viewSchedule() {
+  const edit = canEdit();
   let html = '<div class="page-heading"><h2>Schedule</h2><p>Restaurant, Host, and Cashier shifts. Your row is highlighted.</p></div>';
   if (schedule.error) return html + '<div class="empty">Could not load the schedule: ' + esc(schedule.error) + '</div>';
   if (!schedule.tabs) {
@@ -831,9 +899,12 @@ function viewSchedule() {
   }
   if (!schedule.tab) schedule.tab = defaultScheduleTab(schedule.tabs);
 
-  html += '<label class="tracker-step">Month<select class="input" onchange="onScheduleTab(this.value)">' +
+  html += '<div class="sch-toolbar"><label class="tracker-step">Month<select class="input" onchange="onScheduleTab(this.value)">' +
     schedule.tabs.map(t => '<option value="' + esc(t) + '"' + (t === schedule.tab ? ' selected' : '') + '>' + esc(t) + '</option>').join("") +
-    '</select></label>';
+    '</select></label>' +
+    (edit ? '<button type="button" class="' + (schedule.editing ? 'add-btn' : 'ghost small') + '" onclick="toggleScheduleEdit()">' +
+      (schedule.editing ? 'Done editing' : 'Edit schedule') + '</button>' : '') +
+    '</div>';
 
   if (!schedule.data || schedule.data.tab !== schedule.tab) {
     loadSchedule(schedule.tab);
@@ -841,22 +912,27 @@ function viewSchedule() {
   }
 
   const d = schedule.data;
+  const editing = edit && schedule.editing;
   const head = '<tr><th class="sch-name">Name</th><th class="sch-role">Role</th>' +
-    d.days.map(x => '<th>' + x.day + '<small>' + esc(x.weekday) + '</small></th>').join("") + '</tr>';
+    d.days.map((x, i) => '<th class="sch-day' + (schedule.countDay === i ? ' picked' : '') + '" onclick="setScheduleCountDay(' + i + ')">' +
+      x.day + '<small>' + esc(x.weekday) + '</small></th>').join("") + '</tr>';
   let body = "", block = "";
   d.people.forEach(p => {
     if (p.block !== block) {
       block = p.block;
-      body += '<tr class="sch-block"><td colspan="' + (d.days.length + 2) + '">' + esc(block) + '</td></tr>';
+      const count = d.people.filter(x => x.block === block).length;
+      body += '<tr class="sch-block sch-block-' + block.toLowerCase() + '"><td colspan="' + (d.days.length + 2) + '">' +
+        esc(block) + '<span>' + count + ' staff</span></td></tr>';
     }
     body += '<tr class="sch-row' + (isMySchedule(p.name) ? ' mine' : '') + '">' +
       '<td class="sch-name">' + esc(p.name) + '</td><td class="sch-role">' + esc(p.role || p.position) + '</td>' +
-      p.cells.map((c, i) => '<td class="' + scheduleCellClass(c) + (canEdit() ? ' sch-edit' : '') + '"' +
-        (canEdit() ? ' onclick="openScheduleCell(' + p.row + ',' + i + ')"' : '') + '>' + esc(c.code) + '</td>').join("") + '</tr>';
+      p.cells.map((c, i) => '<td class="' + scheduleCellClass(c) + (editing ? ' sch-edit' : '') + '"' +
+        (editing ? ' onclick="openScheduleCell(' + p.row + ',' + i + ')"' : '') + '>' + esc(c.code) + '</td>').join("") + '</tr>';
   });
 
-  const editHint = canEdit() ? 'Klik sel untuk mengubah. Aturan PH, DP, EO, dan AL dicek sebelum disimpan. ' : '';
-  return html + '<div class="sch-wrap"><table class="sch"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>' +
+  const editHint = editing ? 'Click a cell to change it. PH, DP, EO, and AL rules are checked before saving. ' : '';
+  return html + countPanelHtml(d) +
+    '<div class="sch-wrap"><table class="sch"><thead>' + head + '</thead><tbody>' + body + '</tbody><tfoot>' + scheduleFooterHtml(d) + '</tfoot></table></div>' +
     '<p class="sch-legend">' + editHint + 'Shaded = shift. RS = Reload Social event duty. OFF, OFF/R, DC (sick), EO (extra off), NPL (unpaid leave), DP, AL (annual leave), and PH = no floor shift.</p>';
 }
 
