@@ -749,12 +749,19 @@ async function downloadTrackerReport() {
   }
 }
 
-/* ---------- SCHEDULE (read-only, all staff) ---------- */
+/* ---------- SCHEDULE (all staff read; editors edit in a draft, then save all at once) ---------- */
 
-let schedule = { tabs: null, tab: "", data: null, loadingTabs: false, loadingTab: "", error: "", editing: false, countDay: null };
+let schedule = {
+  tabs: null, tab: "", data: null, loadingTabs: false, loadingTab: "", error: "",
+  editing: false, countDay: null,
+  pending: {}, pendingOrder: [], saving: false, lastBatch: null
+};
 
 /** Month names as the schedule tabs write them (English or Indonesian, e.g. "MEI 2026" for May). */
 const SCHEDULE_MONTHS = [["JAN"], ["FEB"], ["MAR"], ["APR"], ["MEI", "MAY"], ["JUN"], ["JUL"], ["AUG", "AGU"], ["SEP"], ["OCT", "OKT"], ["NOV"], ["DEC", "DES"]];
+const SCHEDULE_ROLE_ORDER = ["Manager", "SPV", "Server", "Runner", "Checker", "Hostess", "Cashier"];
+const SCHEDULE_SHIFT_ORDER = ["M6", "M6.30", "M7", "M8", "M9", "M10", "M11", "MD12", "MD13", "E2"];
+const SCHEDULE_CODE_OPTIONS = ["M6", "M6.30", "M7", "M8", "M9", "M10", "M11", "MD12", "MD13", "E2", "OFF", "OFF/R", "PH", "DP", "AL", "EO", "DC", "NPL", "RS"];
 
 /** This month's tab, or the last tab if this month has none. */
 function defaultScheduleTab(tabs) {
@@ -800,9 +807,15 @@ function loadSchedule(tab) {
 }
 
 function onScheduleTab(tab) {
+  if (scheduleHasChanges() && !confirm("Discard " + schedule.pendingOrder.length + " unsaved change(s)?")) {
+    renderTab();
+    return;
+  }
   schedule.tab = tab;
   schedule.data = null;
   schedule.error = "";
+  schedule.editing = false;
+  clearSchedulePending();
   renderTab();
 }
 
@@ -822,8 +835,7 @@ function scheduleCellClass(c) {
   return "";
 }
 
-const SCHEDULE_ROLE_ORDER = ["Manager", "SPV", "Server", "Runner", "Checker", "Hostess", "Cashier"];
-const SCHEDULE_SHIFT_ORDER = ["M6", "M6.30", "M7", "M8", "M9", "M10", "M11", "MD12", "MD13", "E2"];
+/* ----- counts ----- */
 
 /** Working people per role and shift for one day. RS on its own is not a shift, so it is not counted. */
 function scheduleCounts(d, dayIdx) {
@@ -879,7 +891,119 @@ function countPanelHtml(d) {
     '<td><strong>' + grand + '</strong></td></tr></tfoot></table></div></div>';
 }
 
+/* ----- draft (pending) changes ----- */
+
+function scheduleKey(row, dayIdx) {
+  return row + "|" + dayIdx;
+}
+
+function scheduleHasChanges() {
+  return schedule.pendingOrder.length > 0;
+}
+
+function clearSchedulePending() {
+  schedule.pending = {};
+  schedule.pendingOrder = [];
+}
+
+/** A pending code shown like a saved cell, so counts and shading update at once. */
+function pendingCell(code) {
+  const base = code.split("/")[0];
+  return {
+    code: code,
+    shift: SCHEDULE_SHIFT_ORDER.indexOf(base) !== -1 ? base : "",
+    rs: code === "RS" || /\/RS$/.test(code),
+    unknown: false
+  };
+}
+
+/** The schedule as it would look after the draft is saved. Used for shading, counts, and totals. */
+function scheduleEffective(d) {
+  if (!scheduleHasChanges()) return d;
+  return Object.assign({}, d, {
+    people: d.people.map(p => Object.assign({}, p, {
+      cells: p.cells.map((c, i) => {
+        const k = scheduleKey(p.row, i);
+        return schedule.pending[k] !== undefined ? pendingCell(schedule.pending[k]) : c;
+      })
+    }))
+  });
+}
+
+/** Adds, changes, or removes one draft change. Nothing is sent to the server here. */
+function setSchedulePending(row, dayIdx, code) {
+  const k = scheduleKey(row, dayIdx);
+  const person = schedule.data.people.find(p => p.row === row);
+  const saved = person.cells[dayIdx].code || "";
+  if (code === saved) {
+    delete schedule.pending[k];
+    schedule.pendingOrder = schedule.pendingOrder.filter(x => x !== k);
+  } else {
+    if (schedule.pending[k] === undefined) schedule.pendingOrder.push(k);
+    schedule.pending[k] = code;
+  }
+  renderTab();
+}
+
+function undoLastScheduleChange() {
+  const k = schedule.pendingOrder.pop();
+  if (k !== undefined) delete schedule.pending[k];
+  renderTab();
+}
+
+function discardScheduleChanges() {
+  if (scheduleHasChanges() && !confirm("Discard " + schedule.pendingOrder.length + " unsaved change(s)?")) return;
+  clearSchedulePending();
+  schedule.editing = false;
+  renderTab();
+}
+
+function saveScheduleChanges() {
+  if (!scheduleHasChanges() || schedule.saving) return;
+  const tab = schedule.tab;
+  const changes = schedule.pendingOrder.map(k => {
+    const parts = k.split("|");
+    return { row: Number(parts[0]), dayIndex: Number(parts[1]), code: schedule.pending[k] };
+  });
+  schedule.saving = true;
+  renderTab();
+  api("saveScheduleCells", [sessionToken, tab, changes])
+    .then(function (res) {
+      schedule.saving = false;
+      schedule.lastBatch = { tab: tab, batch: res.batch };
+      clearSchedulePending();
+      schedule.editing = false;
+      schedule.data = null;
+      toast("Saved " + res.saved + " change(s). You can undo them below.");
+      renderTab();
+    })
+    .catch(function (e) {
+      schedule.saving = false;
+      if (isSessionExpired(e)) return handleApiError(e);
+      alert("Not saved. Nothing was changed.\n\n" + e.message);
+      renderTab();
+    });
+}
+
+function undoLastScheduleSave() {
+  const last = schedule.lastBatch;
+  if (!last || !confirm("Undo the last save (" + last.tab + ")?")) return;
+  api("undoScheduleBatch", [sessionToken, last.batch])
+    .then(function () {
+      schedule.lastBatch = null;
+      schedule.data = null;
+      toast("Last save undone.");
+      renderTab();
+    })
+    .catch(function (e) {
+      if (isSessionExpired(e)) return handleApiError(e);
+      alert(e.message);
+      renderTab();
+    });
+}
+
 function toggleScheduleEdit() {
+  if (schedule.editing && scheduleHasChanges()) return discardScheduleChanges();
   schedule.editing = !schedule.editing;
   renderTab();
 }
@@ -887,6 +1011,21 @@ function toggleScheduleEdit() {
 function setScheduleCountDay(i) {
   schedule.countDay = schedule.countDay === i ? null : i;
   renderTab();
+}
+
+/* ----- the page ----- */
+
+function schedulePendingBarHtml() {
+  const n = schedule.pendingOrder.length;
+  if (schedule.saving) return '<div class="sch-pending-bar"><span>Saving…</span></div>';
+  if (!schedule.editing) return "";
+  return '<div class="sch-pending-bar">' +
+    '<span>' + (n ? n + ' unsaved change' + (n > 1 ? 's' : '') : 'No changes yet. Click a cell to change it.') + '</span>' +
+    '<span class="sch-pending-actions">' +
+      (n ? '<button type="button" class="ghost small" onclick="undoLastScheduleChange()">Undo last change</button>' : '') +
+      '<button type="button" class="ghost small" onclick="discardScheduleChanges()">Cancel</button>' +
+      '<button type="button" class="add-btn" ' + (n ? '' : 'disabled ') + 'onclick="saveScheduleChanges()">Save ' + (n || "") + ' change' + (n === 1 ? '' : 's') + '</button>' +
+    '</span></div>';
 }
 
 function viewSchedule() {
@@ -902,17 +1041,20 @@ function viewSchedule() {
   html += '<div class="sch-toolbar"><label class="tracker-step">Month<select class="input" onchange="onScheduleTab(this.value)">' +
     schedule.tabs.map(t => '<option value="' + esc(t) + '"' + (t === schedule.tab ? ' selected' : '') + '>' + esc(t) + '</option>').join("") +
     '</select></label>' +
-    (edit ? '<button type="button" class="' + (schedule.editing ? 'add-btn' : 'ghost small') + '" onclick="toggleScheduleEdit()">' +
-      (schedule.editing ? 'Done editing' : 'Edit schedule') + '</button>' : '') +
+    (edit && !schedule.editing ? '<button type="button" class="ghost small" onclick="toggleScheduleEdit()">Edit schedule</button>' : '') +
+    (edit && schedule.lastBatch && schedule.lastBatch.tab === schedule.tab && !scheduleHasChanges() && !schedule.editing
+      ? '<button type="button" class="ghost small" onclick="undoLastScheduleSave()">Undo last save</button>' : '') +
     '</div>';
+  html += schedulePendingBarHtml();
 
   if (!schedule.data || schedule.data.tab !== schedule.tab) {
     loadSchedule(schedule.tab);
     return html + '<div class="empty">Loading…</div>';
   }
 
-  const d = schedule.data;
-  const editing = edit && schedule.editing;
+  const saved = schedule.data;
+  const d = scheduleEffective(saved);
+  const editing = edit && schedule.editing && !schedule.saving;
   const head = '<tr><th class="sch-name">Name</th><th class="sch-role">Role</th>' +
     d.days.map((x, i) => '<th class="sch-day' + (schedule.countDay === i ? ' picked' : '') + '" onclick="setScheduleCountDay(' + i + ')">' +
       x.day + '<small>' + esc(x.weekday) + '</small></th>').join("") + '</tr>';
@@ -926,25 +1068,28 @@ function viewSchedule() {
     }
     body += '<tr class="sch-row' + (isMySchedule(p.name) ? ' mine' : '') + '">' +
       '<td class="sch-name">' + esc(p.name) + '</td><td class="sch-role">' + esc(p.role || p.position) + '</td>' +
-      p.cells.map((c, i) => '<td class="' + scheduleCellClass(c) + (editing ? ' sch-edit' : '') + '"' +
-        (editing ? ' onclick="openScheduleCell(' + p.row + ',' + i + ')"' : '') + '>' + esc(c.code) + '</td>').join("") + '</tr>';
+      p.cells.map((c, i) => {
+        const isPending = schedule.pending[scheduleKey(p.row, i)] !== undefined;
+        return '<td class="' + scheduleCellClass(c) + (editing ? ' sch-edit' : '') + (isPending ? ' sch-pending' : '') + '"' +
+          (editing ? ' onclick="openScheduleCell(' + p.row + ',' + i + ')"' : '') + '>' + esc(c.code) + '</td>';
+      }).join("") + '</tr>';
   });
 
-  const editHint = editing ? 'Click a cell to change it. PH, DP, EO, and AL rules are checked before saving. ' : '';
+  const editHint = editing ? 'Changes stay in draft until you press Save. PH, DP, EO, and AL rules are checked on save. ' : '';
   return html + countPanelHtml(d) +
     '<div class="sch-wrap"><table class="sch"><thead>' + head + '</thead><tbody>' + body + '</tbody><tfoot>' + scheduleFooterHtml(d) + '</tfoot></table></div>' +
     '<p class="sch-legend">' + editHint + 'Shaded = shift. RS = Reload Social event duty. OFF, OFF/R, DC (sick), EO (extra off), NPL (unpaid leave), DP, AL (annual leave), and PH = no floor shift.</p>';
 }
 
-/* ---------- SCHEDULE: edit (editors only) ---------- */
-
-const SCHEDULE_CODE_OPTIONS = ["M6", "M6.30", "M7", "M8", "M9", "M10", "M11", "MD12", "MD13", "E2", "OFF", "OFF/R", "PH", "DP", "AL", "EO", "DC", "NPL", "RS"];
+/* ----- picking a code ----- */
 
 function openScheduleCell(row, dayIdx) {
-  if (!canEdit()) return;
+  if (!canEdit() || !schedule.editing) return;
   const person = schedule.data && schedule.data.people.find(p => p.row === row);
   const day = schedule.data && schedule.data.days[dayIdx];
   if (!person || !day) return toast("Refresh the page and try again.");
+  const current = schedule.pending[scheduleKey(row, dayIdx)] !== undefined
+    ? schedule.pending[scheduleKey(row, dayIdx)] : (person.cells[dayIdx].code || "");
   let box = document.getElementById("schedPicker");
   if (!box) {
     box = document.createElement("div");
@@ -952,14 +1097,17 @@ function openScheduleCell(row, dayIdx) {
     box.className = "sch-picker";
     document.body.appendChild(box);
   }
+  const hasPending = schedule.pending[scheduleKey(row, dayIdx)] !== undefined;
   box.innerHTML = '<div class="sch-picker-card">' +
     '<strong>' + esc(person.name) + '</strong>' +
-    '<small class="muted">' + day.day + ' ' + esc(day.weekday) + ' · now: ' + esc(person.cells[dayIdx].code || "-") + '</small>' +
+    '<small class="muted">' + day.day + ' ' + esc(day.weekday) + ' · now: ' + esc(current || "-") + '</small>' +
     '<div class="sch-picker-grid">' +
-      SCHEDULE_CODE_OPTIONS.map(c => '<button type="button" class="sch-pick" onclick="pickScheduleCode(' + row + ',' + dayIdx + ',\'' + c + '\')">' + esc(c) + '</button>').join("") +
+      SCHEDULE_CODE_OPTIONS.map(c => '<button type="button" class="sch-pick' + (c === current ? ' current' : '') + '" onclick="pickScheduleCode(' + row + ',' + dayIdx + ',\'' + c + '\')">' + esc(c) + '</button>').join("") +
     '</div>' +
-    '<button type="button" class="ghost small" onclick="closeSchedulePicker()">Cancel</button>' +
-    '</div>';
+    '<div class="sch-picker-foot">' +
+      (hasPending ? '<button type="button" class="ghost small" onclick="revertScheduleCell(' + row + ',' + dayIdx + ')">Back to saved</button>' : '') +
+      '<button type="button" class="ghost small" onclick="closeSchedulePicker()">Close</button>' +
+    '</div></div>';
   box.classList.add("show");
 }
 
@@ -970,13 +1118,13 @@ function closeSchedulePicker() {
 
 function pickScheduleCode(row, dayIdx, code) {
   closeSchedulePicker();
-  api("saveScheduleCell", [sessionToken, schedule.tab, row, dayIdx, code])
-    .then(function () {
-      schedule.data = null;
-      renderTab();
-    })
-    .catch(function (e) {
-      if (isSessionExpired(e)) return handleApiError(e);
-      toast(e.message);
-    });
+  setSchedulePending(row, dayIdx, code);
+}
+
+function revertScheduleCell(row, dayIdx) {
+  closeSchedulePicker();
+  const k = scheduleKey(row, dayIdx);
+  delete schedule.pending[k];
+  schedule.pendingOrder = schedule.pendingOrder.filter(x => x !== k);
+  renderTab();
 }
