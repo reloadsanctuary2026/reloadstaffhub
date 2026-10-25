@@ -748,3 +748,112 @@ async function downloadTrackerReport() {
     toast(e.message);
   }
 }
+
+/* ---------- SCHEDULE (read-only, all staff) ---------- */
+
+let schedule = { tabs: null, tab: "", data: null, loadingTabs: false, loadingTab: "", error: "" };
+
+/** Month names as the schedule tabs write them (English or Indonesian, e.g. "MEI 2026" for May). */
+const SCHEDULE_MONTHS = [["JAN"], ["FEB"], ["MAR"], ["APR"], ["MEI", "MAY"], ["JUN"], ["JUL"], ["AUG", "AGU"], ["SEP"], ["OCT", "OKT"], ["NOV"], ["DEC", "DES"]];
+
+/** This month's tab, or the last tab if this month has none. */
+function defaultScheduleTab(tabs) {
+  const now = new Date();
+  const names = SCHEDULE_MONTHS[now.getMonth()];
+  const year = String(now.getFullYear());
+  const hit = tabs.find(t => names.some(n => t.toUpperCase().indexOf(n) === 0) && t.indexOf(year) !== -1);
+  return hit || tabs[tabs.length - 1] || "";
+}
+
+function loadScheduleTabs() {
+  if (schedule.loadingTabs) return;
+  schedule.loadingTabs = true;
+  api("getScheduleTabs", [sessionToken])
+    .then(function (tabs) {
+      schedule.tabs = tabs;
+      schedule.loadingTabs = false;
+      renderTab();
+    })
+    .catch(function (e) {
+      schedule.loadingTabs = false;
+      schedule.error = e.message;
+      if (isSessionExpired(e)) handleApiError(e);
+      renderTab();
+    });
+}
+
+function loadSchedule(tab) {
+  if (schedule.loadingTab === tab) return;
+  schedule.loadingTab = tab;
+  api("getSchedule", [sessionToken, tab])
+    .then(function (d) {
+      schedule.data = d;
+      schedule.loadingTab = "";
+      renderTab();
+    })
+    .catch(function (e) {
+      schedule.loadingTab = "";
+      schedule.error = e.message;
+      if (isSessionExpired(e)) handleApiError(e);
+      renderTab();
+    });
+}
+
+function onScheduleTab(tab) {
+  schedule.tab = tab;
+  schedule.data = null;
+  schedule.error = "";
+  renderTab();
+}
+
+/** Matches the schedule name ("Rohendi F", "Ali Reza") to the logged-in name word by word. */
+function isMySchedule(name) {
+  const a = String(name || "").toLowerCase().split(/\s+/).filter(Boolean);
+  const b = String(currentName || "").toLowerCase().split(/\s+/).filter(Boolean);
+  if (a.length < 2 || a.length > b.length) return false;
+  return a.every((t, i) => b[i].indexOf(t) === 0);
+}
+
+function scheduleCellClass(c) {
+  if (c.unknown) return "sch-unknown";
+  if (c.shift) return "sch-shift" + (c.rs ? " sch-rs" : "");
+  if (c.rs) return "sch-rs-only";
+  if (c.code) return "sch-off";
+  return "";
+}
+
+function viewSchedule() {
+  let html = '<div class="page-heading"><h2>Schedule</h2><p>Restaurant, Host, and Cashier shifts. Your row is highlighted.</p></div>';
+  if (schedule.error) return html + '<div class="empty">Could not load the schedule: ' + esc(schedule.error) + '</div>';
+  if (!schedule.tabs) {
+    loadScheduleTabs();
+    return html + '<div class="empty">Loading…</div>';
+  }
+  if (!schedule.tab) schedule.tab = defaultScheduleTab(schedule.tabs);
+
+  html += '<label class="tracker-step">Month<select class="input" onchange="onScheduleTab(this.value)">' +
+    schedule.tabs.map(t => '<option value="' + esc(t) + '"' + (t === schedule.tab ? ' selected' : '') + '>' + esc(t) + '</option>').join("") +
+    '</select></label>';
+
+  if (!schedule.data || schedule.data.tab !== schedule.tab) {
+    loadSchedule(schedule.tab);
+    return html + '<div class="empty">Loading…</div>';
+  }
+
+  const d = schedule.data;
+  const head = '<tr><th class="sch-name">Name</th><th class="sch-role">Role</th>' +
+    d.days.map(x => '<th>' + x.day + '<small>' + esc(x.weekday) + '</small></th>').join("") + '</tr>';
+  let body = "", block = "";
+  d.people.forEach(p => {
+    if (p.block !== block) {
+      block = p.block;
+      body += '<tr class="sch-block"><td colspan="' + (d.days.length + 2) + '">' + esc(block) + '</td></tr>';
+    }
+    body += '<tr class="sch-row' + (isMySchedule(p.name) ? ' mine' : '') + '">' +
+      '<td class="sch-name">' + esc(p.name) + '</td><td class="sch-role">' + esc(p.role || p.position) + '</td>' +
+      p.cells.map(c => '<td class="' + scheduleCellClass(c) + '">' + esc(c.code) + '</td>').join("") + '</tr>';
+  });
+
+  return html + '<div class="sch-wrap"><table class="sch"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>' +
+    '<p class="sch-legend">Shaded = shift. RS = Reload Social event duty. OFF, OFF/R, DC (sick), EO (extra off), NPL (unpaid leave), DP, AL (annual leave), and PH = no floor shift.</p>';
+}
