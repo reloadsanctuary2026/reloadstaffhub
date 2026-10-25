@@ -870,7 +870,7 @@ function scheduleFooterHtml(d) {
 function countPanelHtml(d) {
   const i = schedule.countDay;
   if (i === null || i === undefined || !d.days[i]) {
-    return '<p class="sch-legend">Click a day number in the header to see the count per shift.</p>';
+    return '';
   }
   const day = d.days[i];
   const counts = scheduleCounts(d, i);
@@ -1132,9 +1132,9 @@ function viewSchedule() {
   }
   if (!schedule.tab) schedule.tab = defaultScheduleTab(schedule.tabs);
 
-  html += '<div class="sch-toolbar"><label class="tracker-step">Month<select class="input" onchange="onScheduleTab(this.value)">' +
+  html += '<div class="sch-toolbar"><select class="input sch-month" onchange="onScheduleTab(this.value)">' +
     schedule.tabs.map(t => '<option value="' + esc(t) + '"' + (t === schedule.tab ? ' selected' : '') + '>' + esc(t) + '</option>').join("") +
-    '</select></label>' +
+    '</select>' +
     (edit && !schedule.editing ? '<button type="button" class="ghost small" onclick="toggleScheduleEdit()">Edit schedule</button>' : '') +
     (edit && schedule.lastBatch && schedule.lastBatch.tab === schedule.tab && !scheduleHasChanges() && !schedule.editing
       ? '<button type="button" class="ghost small" onclick="undoLastScheduleSave()">Undo last save</button>' : '') +
@@ -1157,9 +1157,9 @@ function viewSchedule() {
     people: full.people.map(p => Object.assign({}, p, { cells: p.cells.slice(w.a, w.b) }))
   };
   if (edit) {
-    html += '<div class="sch-toolbar sch-window"><button type="button" class="ghost small" onclick="shiftScheduleWindow(-1)">◀ Previous 2 weeks</button>' +
-      '<span class="muted">Days ' + d.days[0].day + '–' + d.days[d.days.length - 1].day + ' of ' + n + '</span>' +
-      '<button type="button" class="ghost small" onclick="shiftScheduleWindow(1)">Next 2 weeks ▶</button></div>';
+    html += '<div class="sch-toolbar sch-window"><button type="button" class="ghost small" title="Previous 2 weeks" onclick="shiftScheduleWindow(-1)">◀</button>' +
+      '<span class="muted">' + d.days[0].day + '–' + d.days[d.days.length - 1].day + ' of ' + n + '</span>' +
+      '<button type="button" class="ghost small" title="Next 2 weeks" onclick="shiftScheduleWindow(1)">▶</button></div>';
   }
   html += leavePanelHtml();
 
@@ -1187,7 +1187,7 @@ function viewSchedule() {
 
   const editHint = editing ? 'Changes stay in draft until you press Save. PH, DP, EO, and AL rules are checked on save. ' : '';
   return html + countPanelHtml(full) +
-    '<div class="sch-wrap"><table class="sch sch-grid"><colgroup><col class="c-name"><col class="c-role">' + d.days.map(() => '<col class="c-day">').join("") + '</colgroup><thead>' + head + '</thead><tbody>' + body + '</tbody><tfoot>' + scheduleFooterHtml(d) + '</tfoot></table></div>' +
+    '<div class="sch-wrap"><table class="sch sch-grid" style="width:' + (210 + 104 + 60 * d.days.length) + 'px"><colgroup><col class="c-name"><col class="c-role">' + d.days.map(() => '<col class="c-day">').join("") + '</colgroup><thead>' + head + '</thead><tbody>' + body + '</tbody><tfoot>' + scheduleFooterHtml(d) + '</tfoot></table></div>' +
     '<p class="sch-legend">' + editHint + 'Shaded = shift. RS = Reload Social event duty. OFF, OFF/R, DC (sick), EO (extra off), NPL (unpaid leave), DP, AL (annual leave), and PH = no floor shift.</p>';
 }
 

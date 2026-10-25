@@ -921,3 +921,13 @@ body { overflow-wrap: anywhere; }
 .sch-grid td.sch-name { white-space: nowrap; }
 .sch-foot-head td { background: var(--elevated); color: var(--text); font-weight: 800; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; text-align: left; border-top: 3px solid var(--accent); padding: 8px 12px; }
 .sch-count-table, .sch-leave { table-layout: auto; width: auto; }
+
+/* Simpler schedule toolbar */
+.sch-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.sch-month { width: auto; min-width: 200px; }
+.sch-window { margin: 8px 0 0; }
+.sch-window .muted { font-size: 13px; }
+/* Grid: exact width and the same borders on header and body, so every column lines up */
+.sch-grid { border-collapse: separate; border-spacing: 0; }
+.sch-grid th, .sch-grid td { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.sch-grid th:first-child, .sch-grid td:first-child { border-left: 0; }
