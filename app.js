@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.44.0";
+const APP_VERSION = "2.44.1";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -1566,7 +1566,26 @@ function editBtn(sheetKey, rec, corner) {
   return '<button class="edit-btn' + (corner ? ' corner-edit' : '') + '" type="button" onclick="event.stopPropagation();closeDetail();openEdit(\'' + sheetKey + '\',' + rec._row + ')">Edit</button>';
 }/* ---------- FORM (tambah, edit, hapus) ---------- */
 
-function openAdd(sheetKey, presetDate) {
+/** Load the POS menu names fresh, then call done(). Used before the Upsell form opens. */
+function loadMenuNamesThen(done) {
+  api("getData", [sessionToken, ["posMenus"]])
+    .then(function (d) {
+      appData.posMenus = Array.isArray(d.posMenus) ? d.posMenus : [];
+      markLoaded(["posMenus"]);
+      done();
+    })
+    .catch(function (e) {
+      if (isSessionExpired(e)) return handleApiError(e);
+      toast(e.message);
+    });
+}
+
+function openAdd(sheetKey, presetDate, menusFetched) {
+  // The Upsell item list comes from 16_PosMenus. Load it fresh so the dropdown is never empty by accident.
+  if (sheetKey === "upsell" && !menusFetched) {
+    loadMenuNamesThen(function () { openAdd(sheetKey, presetDate, true); });
+    return;
+  }
   const blank = {};
   EDIT_FIELDS[sheetKey].forEach(f => { blank[f.key] = defaultValue(sheetKey, f); });
   if (presetDate) {
