@@ -34,7 +34,7 @@ body {
 }
 
 .hidden { display: none !important; }
-.container { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+.container { max-width: none; margin: 0 auto; padding: 0 16px; }
 .muted { color: var(--muted); }
 .small { font-size: 13px; }
 .pre { white-space: pre-line; margin: 6px 0 0; color: var(--text); }
