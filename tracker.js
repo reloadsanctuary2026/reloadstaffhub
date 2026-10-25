@@ -851,9 +851,56 @@ function viewSchedule() {
     }
     body += '<tr class="sch-row' + (isMySchedule(p.name) ? ' mine' : '') + '">' +
       '<td class="sch-name">' + esc(p.name) + '</td><td class="sch-role">' + esc(p.role || p.position) + '</td>' +
-      p.cells.map(c => '<td class="' + scheduleCellClass(c) + '">' + esc(c.code) + '</td>').join("") + '</tr>';
+      p.cells.map((c, i) => '<td class="' + scheduleCellClass(c) + (canEdit() ? ' sch-edit' : '') + '"' +
+        (canEdit() ? ' onclick="openScheduleCell(' + p.row + ',' + i + ')"' : '') + '>' + esc(c.code) + '</td>').join("") + '</tr>';
   });
 
+  const editHint = canEdit() ? 'Klik sel untuk mengubah. Aturan PH, DP, EO, dan AL dicek sebelum disimpan. ' : '';
   return html + '<div class="sch-wrap"><table class="sch"><thead>' + head + '</thead><tbody>' + body + '</tbody></table></div>' +
-    '<p class="sch-legend">Shaded = shift. RS = Reload Social event duty. OFF, OFF/R, DC (sick), EO (extra off), NPL (unpaid leave), DP, AL (annual leave), and PH = no floor shift.</p>';
+    '<p class="sch-legend">' + editHint + 'Shaded = shift. RS = Reload Social event duty. OFF, OFF/R, DC (sick), EO (extra off), NPL (unpaid leave), DP, AL (annual leave), and PH = no floor shift.</p>';
+}
+
+/* ---------- SCHEDULE: edit (editors only) ---------- */
+
+const SCHEDULE_CODE_OPTIONS = ["M6", "M6.30", "M7", "M8", "M9", "M10", "M11", "MD12", "MD13", "E2", "OFF", "OFF/R", "PH", "DP", "AL", "EO", "DC", "NPL", "RS"];
+
+function openScheduleCell(row, dayIdx) {
+  if (!canEdit()) return;
+  const person = schedule.data && schedule.data.people.find(p => p.row === row);
+  const day = schedule.data && schedule.data.days[dayIdx];
+  if (!person || !day) return toast("Refresh the page and try again.");
+  let box = document.getElementById("schedPicker");
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "schedPicker";
+    box.className = "sch-picker";
+    document.body.appendChild(box);
+  }
+  box.innerHTML = '<div class="sch-picker-card">' +
+    '<strong>' + esc(person.name) + '</strong>' +
+    '<small class="muted">' + day.day + ' ' + esc(day.weekday) + ' · now: ' + esc(person.cells[dayIdx].code || "-") + '</small>' +
+    '<div class="sch-picker-grid">' +
+      SCHEDULE_CODE_OPTIONS.map(c => '<button type="button" class="sch-pick" onclick="pickScheduleCode(' + row + ',' + dayIdx + ',\'' + c + '\')">' + esc(c) + '</button>').join("") +
+    '</div>' +
+    '<button type="button" class="ghost small" onclick="closeSchedulePicker()">Cancel</button>' +
+    '</div>';
+  box.classList.add("show");
+}
+
+function closeSchedulePicker() {
+  const box = document.getElementById("schedPicker");
+  if (box) box.classList.remove("show");
+}
+
+function pickScheduleCode(row, dayIdx, code) {
+  closeSchedulePicker();
+  api("saveScheduleCell", [sessionToken, schedule.tab, row, dayIdx, code])
+    .then(function () {
+      schedule.data = null;
+      renderTab();
+    })
+    .catch(function (e) {
+      if (isSessionExpired(e)) return handleApiError(e);
+      toast(e.message);
+    });
 }
