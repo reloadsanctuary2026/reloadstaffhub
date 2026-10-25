@@ -858,7 +858,8 @@ function sumCounts(obj) {
 function scheduleFooterHtml(d) {
   const roles = SCHEDULE_ROLE_ORDER.filter(r => d.people.some(p => p.role === r));
   const perDay = d.days.map((_, i) => scheduleCounts(d, i));
-  const rows = roles.map(r => '<tr class="sch-foot"><td class="sch-name">Working: ' + esc(r) + '</td><td></td>' +
+  const divider = '<tr class="sch-foot-head"><td colspan="' + (d.days.length + 2) + '">Working per day</td></tr>';
+  const rows = divider + roles.map(r => '<tr class="sch-foot"><td class="sch-name">Working: ' + esc(r) + '</td><td></td>' +
     perDay.map(c => '<td>' + (sumCounts(c[r]) || "") + '</td>').join("") + '</tr>').join("");
   const totals = '<tr class="sch-foot sch-foot-total"><td class="sch-name"><strong>Working: total</strong></td><td></td>' +
     perDay.map(c => '<td><strong>' + (roles.reduce((a, r) => a + sumCounts(c[r]), 0) || "") + '</strong></td>').join("") + '</tr>';
@@ -1186,7 +1187,7 @@ function viewSchedule() {
 
   const editHint = editing ? 'Changes stay in draft until you press Save. PH, DP, EO, and AL rules are checked on save. ' : '';
   return html + countPanelHtml(full) +
-    '<div class="sch-wrap"><table class="sch"><thead>' + head + '</thead><tbody>' + body + '</tbody><tfoot>' + scheduleFooterHtml(d) + '</tfoot></table></div>' +
+    '<div class="sch-wrap"><table class="sch sch-grid"><colgroup><col class="c-name"><col class="c-role">' + d.days.map(() => '<col class="c-day">').join("") + '</colgroup><thead>' + head + '</thead><tbody>' + body + '</tbody><tfoot>' + scheduleFooterHtml(d) + '</tfoot></table></div>' +
     '<p class="sch-legend">' + editHint + 'Shaded = shift. RS = Reload Social event duty. OFF, OFF/R, DC (sick), EO (extra off), NPL (unpaid leave), DP, AL (annual leave), and PH = no floor shift.</p>';
 }
 

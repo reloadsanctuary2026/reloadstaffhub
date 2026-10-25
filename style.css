@@ -908,3 +908,16 @@ body { overflow-wrap: anywhere; }
 .sm-code.sch-rs-only { color: var(--accent); }
 .sm-code.sch-off { color: var(--muted); }
 .sm-code.sch-rs { box-shadow: inset 0 0 0 1px var(--accent); }
+
+/* Schedule grid: fixed columns so every row lines up; header and name column stay in place while scrolling */
+.sch-wrap:has(.sch-grid) { max-height: 70vh; overflow: auto; }
+.sch-grid { table-layout: fixed; width: max-content; min-width: 100%; }
+.sch-grid .c-name { width: 210px; }
+.sch-grid .c-role { width: 104px; }
+.sch-grid .c-day { width: 60px; }
+.sch-grid th, .sch-grid td { overflow: hidden; text-overflow: ellipsis; }
+.sch-grid thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); }
+.sch-grid thead th.sch-name { z-index: 4; }
+.sch-grid td.sch-name { white-space: nowrap; }
+.sch-foot-head td { background: var(--elevated); color: var(--text); font-weight: 800; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; text-align: left; border-top: 3px solid var(--accent); padding: 8px 12px; }
+.sch-count-table, .sch-leave { table-layout: auto; width: auto; }
