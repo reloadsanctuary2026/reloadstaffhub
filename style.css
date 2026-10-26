@@ -745,14 +745,6 @@ ul.plain li:last-child { border-bottom: 0; }
 .bc-day-head .bc-day-title { margin: 0; }
 .bc-day-head .add-btn { height: 36px; }
 /* Layout kalender: desktop kalender di kiri (3/4), hari terpilih di kanan (1/4) dan bisa langsung dibaca/diedit */
-/* Home: baris bawah tiap kolom, jumlah yang tampil dan tombol ke halaman penuh */
-.home-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--border); }
-.home-foot-count { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; }
-.home-viewall {
-  height: 34px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--accent); background: none;
-  color: var(--accent); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s, color 0.15s;
-}
-.home-viewall:hover, .home-viewall:focus-visible { background: var(--accent); color: #030303; }
 .bc-layout { display: block; }
 .bc-side { margin-top: 8px; }
 @media (min-width: 900px) {
