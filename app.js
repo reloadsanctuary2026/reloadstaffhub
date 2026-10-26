@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.60.0";
+const APP_VERSION = "2.61.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -1652,6 +1652,7 @@ function showForm(title, values, canDelete) {
     // New rows: the shift comes from the session, so the Shift field is not shown.
     const shiftField = document.querySelector('#editForm select[data-key="shift"]');
     if (shiftField && shiftField.closest(".field")) shiftField.closest(".field").classList.add("hidden");
+    upsellChipsSetup();
   }
   document.getElementById("editTitle").innerText = title;
   document.getElementById("editError").innerText = "";
@@ -1810,6 +1811,46 @@ function checksHtml(f, v) {
   ).join("") + '</div>';
 }
 
+/* ---------- Upsell: several items in one save ---------- */
+
+/** Adds the chip box under the Item field. Each item typed + "Add item" becomes a chip. */
+function upsellChipsSetup() {
+  formState.items = [];
+  const item = document.querySelector('#editForm [data-key="item"]');
+  const field = item && item.closest(".field");
+  if (!field) return;
+  const box = document.createElement("div");
+  box.className = "field";
+  box.id = "upsellItemsBox";
+  box.innerHTML = '<div class="upsell-add-row"><button type="button" class="ghost small" onclick="addUpsellChip()">+ Add item</button></div>' +
+    '<div id="upsellChips" class="upsell-chips"></div>' +
+    '<small class="muted">Pick or type an item, press + Add item, and repeat. Each item gets every shift of its session.</small>';
+  field.after(box);
+  renderUpsellChips();
+}
+
+function addUpsellChip() {
+  const el = document.querySelector('#editForm [data-key="item"]');
+  const name = clean(el.value);
+  if (!name) return toast("Pick or type an item first.");
+  if (formState.items.some(x => x.toLowerCase() === name.toLowerCase())) return toast("Already in the list.");
+  formState.items.push(name);
+  el.value = "";
+  renderUpsellChips();
+}
+
+function removeUpsellChip(i) {
+  formState.items.splice(i, 1);
+  renderUpsellChips();
+}
+
+function renderUpsellChips() {
+  const box = document.getElementById("upsellChips");
+  if (!box) return;
+  box.innerHTML = formState.items.map((x, i) =>
+    '<span class="upsell-chip">' + esc(x) + '<button type="button" onclick="removeUpsellChip(' + i + ')" aria-label="Remove">×</button></span>').join("");
+}
+
 /** The "+ New…" box appears only when selected. */
 /** The only Upsell shifts. Morning = M6 and M8, Afternoon = M11 and MD12, Evening = E2. Same as UPSELL_SESSION_SHIFTS in Code.gs. */
 const SESSION_SHIFTS = { "Morning": ["M6", "M8"], "Afternoon": ["M11", "MD12"], "Evening": ["E2"] };
@@ -1915,10 +1956,14 @@ async function saveForm() {
     const newValues = readForm();
     if (mode === "add") {
       if (sheetKey === "upsell") {
-        // One call for all shifts of the session: all rows are written, or none. Safe to press again.
-        const res = (await api("addUpsellItem", [sessionToken, newValues])) || {};
+        // Several items at once: one call, one write. The item still typed in the box counts too.
+        const items = formState.items.slice();
+        const typed = clean(newValues.item);
+        if (typed && !items.some(x => x.toLowerCase() === typed.toLowerCase())) items.push(typed);
+        if (!items.length) throw new Error("Add at least one item.");
+        const res = (await api("addUpsellItems", [sessionToken, newValues, items])) || {};
         const added = res.added || [], skipped = res.skipped || [];
-        toast(added.length ? "Added " + added.length + " row(s): " + added.join(", ") + (skipped.length ? " (" + skipped.join(", ") + " already there)" : "") : "Already there. Nothing added.");
+        toast(added.length ? "Added " + added.length + " row(s)." + (skipped.length ? " Already there: " + skipped.join(", ") + "." : "") : "Already there. Nothing added.");
       } else {
         await api("addRow", [sessionToken, sheetKey, newValues]);
         toast("Added.");

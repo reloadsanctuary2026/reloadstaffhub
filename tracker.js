@@ -50,9 +50,14 @@ function isServerTitle(title) {
   return /waiter|waitress|server/i.test(String(title || ""));
 }
 
-/** Staff whose job title is a server role. The tracker only works with these people. */
+/** Upsell Tracker counts servers, waiters, waitresses, and runners. */
+function isTrackerStaffTitle(title) {
+  return /waiter|waitress|server|runner/i.test(String(title || ""));
+}
+
+/** Staff whose job title is a counted role. The tracker only works with these people. */
 function serverStaff() {
-  return (tracker.staff || []).filter(s => isServerTitle(s.jobTitle));
+  return (tracker.staff || []).filter(s => isTrackerStaffTitle(s.jobTitle));
 }
 
 function trackerNorm(s) {

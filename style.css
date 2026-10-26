@@ -931,3 +931,9 @@ body { overflow-wrap: anywhere; }
 .sch-grid { border-collapse: separate; border-spacing: 0; }
 .sch-grid th, .sch-grid td { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); }
 .sch-grid th:first-child, .sch-grid td:first-child { border-left: 0; }
+
+/* Upsell: several items at once */
+.upsell-add-row { display: flex; justify-content: flex-end; margin-bottom: 6px; }
+.upsell-chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 4px; }
+.upsell-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 12px; border-radius: 999px; background: var(--accent-soft); border: 1px solid var(--border); font-size: 13px; }
+.upsell-chip button { background: none; border: 0; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 6px; }
