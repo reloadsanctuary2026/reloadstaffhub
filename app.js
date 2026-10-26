@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.63.0";
+const APP_VERSION = "2.64.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -1345,9 +1345,17 @@ function bulletinCalendarHtml() {
     const list = byDay[iso] || [];
     const dots = Array.from(new Set(list.map(r => bulletinColor(r.type))))
       .map(c => '<i class="bc-dot" style="--tag:' + esc(c) + '"></i>').join("");
-    const classes = "bc-cell" + (iso === todayIso ? " bc-today" : "") + (iso === bulletinDay ? " bc-picked" : "");
+    const classes = "bc-cell" + (iso === todayIso ? " bc-today" : "") + (iso === bulletinDay ? " bc-picked" : "") + (list.length ? " bc-has" : "");
+    // Hover (desktop only) shows the day's items floating over the calendar. Click still picks the day.
+    const pop = list.length
+      ? '<span class="bc-pop" role="tooltip">' + list.map(r =>
+          '<span class="bc-pop-item"><span class="bc-pop-head"><span class="bl-tag" ' + bulletinStyle(r.type) + '>' + esc(r.type || "Info") + '</span>' +
+          '<b>' + esc(r.title) + '</b></span>' +
+          (r.description ? '<span class="bc-pop-text">' + esc(clipText(String(r.description), 90)) + '</span>' : '') + '</span>'
+        ).join("") + '</span>'
+      : "";
     cells.push('<button type="button" class="' + classes + '" onclick="bulletinPick(\'' + iso + '\')">' +
-      '<span>' + d + '</span><span class="bc-dots">' + dots + '</span></button>');
+      '<span>' + d + '</span><span class="bc-dots">' + dots + '</span>' + pop + '</button>');
   }
 
   const dayItems = bulletinDay ? (byDay[bulletinDay] || []) : [];
@@ -1364,7 +1372,7 @@ function bulletinCalendarHtml() {
     '<div class="bc-week">' + BULLETIN_WEEKDAYS.map(w => '<span>' + w + '</span>').join("") + '</div>' +
     '<div class="bc-grid">' + cells.join("") + '</div>' +
     (bulletinDay
-      ? dayHead + (dayItems.length ? dayItems.map(bulletinItem).join("") : emptyState("Nothing on this day yet."))
+      ? dayHead + (dayItems.length ? dayItems.map(r => bulletinItem(r, true)).join("") : emptyState("Nothing on this day yet."))
       : '<p class="muted small bc-hint">Tap a date to see its items or add one.</p>');
 }
 
@@ -1396,10 +1404,22 @@ function bulletinMore() {
   renderTab();
 }
 
-/** One bulletin item, used in the calendar (per day) and in the list. Read more only expands the text in place. */
-function bulletinItem(r) {
+/** One bulletin item, used in the list (full) and under the calendar (compact: small photo, short text). Read more only expands the text in place. */
+function bulletinItem(r, compact) {
   const text = String(r.description || "");
   const more = text.length > 80;
+  if (compact) {
+    return '<div class="bl-item bl-compact clickable' + (r.image ? ' bl-has-thumb' : '') + '" ' + bulletinStyle(r.type) + ' onclick="openDetail(\'bulletin\',' + r._row + ')">' +
+      (r.image ? '<img class="bl-thumb" src="' + imgUrl(r.image) + '" alt="" loading="lazy">' : '') +
+      '<div class="bl-body">' +
+        '<div class="bl-meta"><span class="bl-tag" ' + bulletinStyle(r.type) + '>' + esc(r.type || "Info") + '</span>' +
+        '<span class="small muted">' + esc(r.date) + '</span></div>' +
+        '<div class="note-title">' + esc(r.title) + '</div>' +
+        (text ? '<p class="bl-text">' + esc(clipText(text, 80)) + '</p>' : '') +
+        '<div class="bl-actions">' + editBtn("bulletin", r) + '</div>' +
+      '</div>' +
+    '</div>';
+  }
   return '<div class="bl-item clickable" ' + bulletinStyle(r.type) + ' onclick="openDetail(\'bulletin\',' + r._row + ')">' +
     (r.image ? photoBtn(r.image, '<img class="bl-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">') : '') +
     '<div class="bl-meta"><span class="bl-tag" ' + bulletinStyle(r.type) + '>' + esc(r.type || "Info") + '</span>' +
@@ -1413,7 +1433,9 @@ function bulletinItem(r) {
       editBtn("bulletin", r) +
     '</div>' +
   '</div>';
-}function toggleBulletinText(btn) {
+}
+
+function toggleBulletinText(btn) {
   const item = btn.closest(".bl-item");
   const open = item.classList.toggle("open");
   btn.innerText = open ? "Show less" : "Read more";

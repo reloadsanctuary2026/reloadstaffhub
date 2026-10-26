@@ -743,6 +743,30 @@ ul.plain li:last-child { border-bottom: 0; }
 .bc-day-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 16px 0 8px; }
 .bc-day-head .bc-day-title { margin: 0; }
 .bc-day-head .add-btn { height: 36px; }
+/* Kalender: item hari itu muncul melayang saat kursor di tanggal (hanya perangkat dengan hover) */
+.bc-cell { position: relative; }
+.bc-pop {
+  display: none; position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%); z-index: 30;
+  width: 260px; max-width: 70vw; text-align: left; padding: 10px 12px; border-radius: var(--radius);
+  background: var(--elevated); border: 1px solid var(--border); box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+  font-size: 12px; font-weight: 400; color: var(--text); cursor: default;
+}
+.bc-grid > .bc-cell:nth-child(7n+1) .bc-pop { left: 0; transform: none; }
+.bc-grid > .bc-cell:nth-child(7n) .bc-pop { left: auto; right: 0; transform: none; }
+.bc-pop-item { display: block; }
+.bc-pop-item + .bc-pop-item { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.bc-pop-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.bc-pop-head b { font-size: 13px; }
+.bc-pop-text { display: block; margin-top: 3px; color: var(--muted); line-height: 1.4; }
+@media (hover: hover) and (pointer: fine) {
+  .bc-cell.bc-has:hover .bc-pop, .bc-cell.bc-has:focus-visible .bc-pop { display: block; }
+}
+/* Item di bawah kalender: versi kecil (foto kecil, teks pendek) */
+.bl-compact { display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; }
+.bl-thumb { width: 84px; height: 84px; flex: 0 0 84px; object-fit: cover; border-radius: 10px; display: block; }
+.bl-compact .bl-body { flex: 1; min-width: 0; }
+.bl-compact .bl-text { font-size: 13px; margin-top: 4px; }
+.bl-compact .bl-actions { margin-top: 6px; }
 
 /* Tanda › di baris: rata tengah secara vertikal */
 .chev { display: flex; align-items: center; line-height: 1; }
