@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.65.0";
+const APP_VERSION = "2.65.1";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -612,6 +612,8 @@ function viewHome() {
   const quote = quotes.length ? quotes[new Date().getDate() % quotes.length] : null;
   const guests = newestFirst(appData.guests.filter(isActive)).slice(0, GUEST_HOME_LIMIT);
   const news = newestFirst(appData.bulletin.filter(isActive)).slice(0, BULLETIN_HOME_LIMIT);
+  const guestTotal = appData.guests.filter(isActive).length;
+  const newsTotal = appData.bulletin.filter(isActive).length;
 
   return '<div class="home-top"><section class="hero">' +
       '<div class="hero-actions">' + (quote ? editBtn("inspiration", quote) : '') + addBtn("inspiration", "+ Quote") + '</div>' +
@@ -626,17 +628,23 @@ function viewHome() {
     '<div class="home-grid">' +
       homeCol("Our Guests", "guests",
         guests.length ? guests.map(guestCard).join("") : emptyState("No active guest notes."),
-        '<button class="ghost small-link" type="button" onclick="openGuestsLanding()">View all</button>') +
+        homeFoot(guests.length, guestTotal, "guests", "openGuestsLanding()")) +
       homeCol("Upsell Today", "upsell", upsellPanel()) +
       homeCol("Staff Bulletin", "bulletin",
         news.length ? news.map(bulletinCard).join("") : emptyState("No active bulletin yet."),
-        '<button class="ghost small-link" type="button" onclick="openBulletinLanding()">View all</button>') +
+        homeFoot(news.length, newsTotal, "bulletins", "openBulletinLanding()")) +
     '</div>';
 }
 
 /** One column on Home: title + add button, then its content. */
-function homeCol(title, sheetKey, body) {
-  return '<section class="home-col">' + sectionHead(title, sheetKey) + body + '</section>';
+function homeCol(title, sheetKey, body, foot) {
+  return '<section class="home-col">' + sectionHead(title, sheetKey) + body + (foot || '') + '</section>';
+}
+
+/** Bottom of a Home column: how many are shown, and a button to the full page. */
+function homeFoot(shown, total, label, action) {
+  return '<div class="home-foot"><span class="home-foot-count">' + shown + ' of ' + total + ' ' + label + '</span>' +
+    '<button class="home-viewall" type="button" onclick="' + action + '">View all</button></div>';
 }
 
 /**
