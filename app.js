@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.62.0";
+const APP_VERSION = "2.62.1";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -1827,6 +1827,11 @@ function upsellChipsSetup() {
     '<small class="muted">Pick or type an item, press + Add item, and repeat. Each item gets every shift of its session.</small>';
   field.after(box);
   renderUpsellChips();
+}
+
+/** Trim the typed text, same as clean_ in Code.gs. */
+function clean(v) {
+  return String(v == null ? "" : v).trim();
 }
 
 function addUpsellChip() {
