@@ -821,7 +821,7 @@ body { overflow-wrap: anywhere; }
 /* Home top: quote di kiri, ringkasan kemarin di kanan (desktop). Di HP ditumpuk. */
 .home-top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
 .home-top > .hero, .home-top > .home-upsell { margin: 0; }
-.home-top > .home-upsell { display: flex; align-items: center; padding: 22px 26px; }
+.home-top > .home-upsell { padding: 20px 22px; }
 /* Tombol Edit dan + Quote di pojok kanan atas, teks quote tetap yang paling terlihat */
 .hero .hero-actions { position: absolute; top: 16px; right: 16px; display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; margin: 0; }
 .hero .hero-greet, .hero .hero-name { padding-right: 150px; }
@@ -829,9 +829,27 @@ body { overflow-wrap: anywhere; }
 @media (min-width: 900px) {
   .home-top { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .home-top > .hero { display: flex; flex-direction: column; justify-content: center; }
-  .home-top > .home-upsell { font-size: 17px; line-height: 1.6; }
 }
 .home-upsell strong { color: var(--accent); }
+.home-upsell .up-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.home-upsell .up-kicker { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.home-upsell .up-pct { font-size: 20px; font-weight: 700; color: var(--accent); }
+.home-upsell .up-total { margin-top: 6px; font-size: 15px; color: var(--muted); }
+.home-upsell .up-total strong { font-size: 34px; line-height: 1.1; font-weight: 700; color: var(--text); }
+.home-upsell .up-bar { display: block; height: 6px; border-radius: 99px; background: var(--border); overflow: hidden; }
+.home-upsell .up-bar > span { display: block; height: 100%; background: var(--accent); border-radius: 99px; }
+.home-upsell .up-bar-lg { height: 8px; margin: 12px 0 10px; }
+.home-upsell .up-sub, .home-upsell .up-mine { font-size: 13px; color: var(--muted); }
+.home-upsell .up-mine { margin-top: 2px; }
+.home-upsell .up-empty { margin: 8px 0 0; color: var(--muted); }
+.home-upsell .up-details { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+.home-upsell .up-details summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); }
+.home-upsell .up-group { margin-top: 12px; }
+.home-upsell .up-group-title { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.home-upsell .up-row { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 70px; align-items: center; gap: 10px; padding: 4px 0; font-size: 13px; }
+.home-upsell .up-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.home-upsell .up-code { font-weight: 600; }
+.home-upsell .up-num { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
 
 /* Schedule */
 .sch-wrap { overflow-x: auto; margin-top: 12px; border: 1px solid var(--border); border-radius: var(--radius); }

@@ -627,11 +627,36 @@ function upsellSummaryHtml() {
   if (d.failed) return "";
   const day = formatSheetDate(new Date(d.date + "T00:00:00"));
   if (!d.saved) {
-    return '<div class="home-upsell">Yesterday (' + esc(day) + '): no upsell results saved yet.</div>';
+    return '<section class="home-upsell"><div class="up-head"><span class="up-kicker">Upsell · ' + esc(day) + '</span></div>' +
+      '<p class="up-empty">No upsell results saved yet.</p></section>';
   }
-  const mine = d.mine ? 'You sold <strong>' + d.mySold + '</strong> of <strong>' + d.myTarget + '</strong> challenge items. ' : '';
-  return '<div class="home-upsell">Yesterday (' + esc(day) + '): ' + mine +
-    'Team sold <strong>' + d.teamSold + '</strong> of <strong>' + d.teamTarget + '</strong>.</div>';
+  const pct = d.teamTarget > 0 ? Math.min(100, Math.round(d.teamSold / d.teamTarget * 100)) : 0;
+  const bar = function (sold, target) {
+    const w = target > 0 ? Math.min(100, Math.round(sold / target * 100)) : 0;
+    return '<span class="up-bar"><span style="width:' + w + '%"></span></span>';
+  };
+  const mine = d.mine
+    ? '<div class="up-mine">You <strong>' + d.mySold + '</strong> / ' + d.myTarget + '</div>'
+    : '';
+  const shifts = (d.byShift || []).map(function (s) {
+    return '<div class="up-row"><span class="up-code">' + esc(s.shift) + '</span>' + bar(s.sold, s.target) +
+      '<span class="up-num">' + s.sold + ' / ' + s.target + '</span></div>';
+  }).join("");
+  const items = (d.byItem || []).map(function (i) {
+    return '<div class="up-row"><span class="up-code up-name">' + esc(i.item) + '</span>' + bar(i.sold, i.target) +
+      '<span class="up-num">' + i.sold + ' / ' + i.target + '</span></div>';
+  }).join("");
+  return '<section class="home-upsell">' +
+    '<div class="up-head"><span class="up-kicker">Upsell · ' + esc(day) + '</span>' +
+    (d.teamTarget > 0 ? '<span class="up-pct">' + pct + '%</span>' : '') + '</div>' +
+    '<div class="up-total"><strong>' + d.teamSold + '</strong><span> of ' + d.teamTarget + ' items</span></div>' +
+    '<span class="up-bar up-bar-lg"><span style="width:' + pct + '%"></span></span>' +
+    (d.staff !== undefined ? '<div class="up-sub">' + d.staff + ' staff saved</div>' : '') + mine +
+    (shifts || items ? '<details class="up-details"><summary>Per shift and item</summary>' +
+      (shifts ? '<div class="up-group"><div class="up-group-title">Shift</div>' + shifts + '</div>' : '') +
+      (items ? '<div class="up-group"><div class="up-group-title">Item</div>' + items + '</div>' : '') +
+      '</details>' : '') +
+    '</section>';
 }
 
 function loadUpsellSummary() {
