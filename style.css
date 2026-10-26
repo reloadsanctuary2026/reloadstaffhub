@@ -684,8 +684,9 @@ ul.plain li:last-child { border-bottom: 0; }
 .bc-empty { visibility: hidden; }
 .bc-today { border-color: var(--accent); }
 .bc-picked { background: var(--text); color: var(--bg); }
-.bc-dots { display: flex; gap: 3px; min-height: 6px; }
-.bc-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--tag, var(--muted)); display: block; }
+.bc-dots { display: flex; gap: 3px; width: 70%; min-height: 5px; }
+/* Warna tipe sebagai batang tebal di bawah tanggal (lebih terlihat dari titik kecil) */
+.bc-dot { flex: 1; height: 5px; border-radius: 3px; background: var(--tag, var(--muted)); display: block; }
 .bc-day-title { font-weight: 700; margin: 16px 0 8px; }
 .bc-hint { margin-top: 14px; }
 
@@ -743,6 +744,15 @@ ul.plain li:last-child { border-bottom: 0; }
 .bc-day-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin: 16px 0 8px; }
 .bc-day-head .bc-day-title { margin: 0; }
 .bc-day-head .add-btn { height: 36px; }
+/* Layout kalender: desktop kalender di kiri (3/4), hari terpilih di kanan (1/4) dan bisa langsung dibaca/diedit */
+.bc-layout { display: block; }
+.bc-side { margin-top: 8px; }
+@media (min-width: 900px) {
+  .bc-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+  .bc-side { margin-top: 0; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; padding-right: 4px; }
+  .bc-side .bc-day-title { margin-top: 0; }
+  .bc-side .bc-hint { margin-top: 0; }
+}
 /* Kalender: item hari itu muncul melayang saat kursor di tanggal (hanya perangkat dengan hover) */
 .bc-cell { position: relative; }
 .bc-pop {

@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.64.0";
+const APP_VERSION = "2.65.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -1364,16 +1364,21 @@ function bulletinCalendarHtml() {
       (canEdit() ? '<button class="add-btn" type="button" onclick="openAdd(\'bulletin\',\'' + bulletinDay + '\')">+ Add on this day</button>' : '') +
       '</div>'
     : "";
-  return '<div class="bc-head">' +
+  // Desktop: calendar on the left, the picked day on the right (read and edit there). Phone: stacked.
+  return '<div class="bc-layout"><div class="bc-main">' +
+    '<div class="bc-head">' +
       '<button class="ghost small" type="button" aria-label="Previous month" onclick="bulletinMonthStep(-1)">‹</button>' +
       '<strong>' + BULLETIN_MONTHS[m] + ' ' + y + '</strong>' +
       '<button class="ghost small" type="button" aria-label="Next month" onclick="bulletinMonthStep(1)">›</button>' +
     '</div>' +
     '<div class="bc-week">' + BULLETIN_WEEKDAYS.map(w => '<span>' + w + '</span>').join("") + '</div>' +
     '<div class="bc-grid">' + cells.join("") + '</div>' +
+    '</div>' +
+    '<aside class="bc-side">' +
     (bulletinDay
       ? dayHead + (dayItems.length ? dayItems.map(r => bulletinItem(r, true)).join("") : emptyState("Nothing on this day yet."))
-      : '<p class="muted small bc-hint">Tap a date to see its items or add one.</p>');
+      : '<p class="muted small bc-hint">Tap a date to see its items or add one.</p>') +
+    '</aside></div>';
 }
 
 function bulletinMonthStep(delta) {
