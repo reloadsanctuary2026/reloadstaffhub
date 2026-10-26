@@ -842,8 +842,11 @@ body { overflow-wrap: anywhere; }
 .home-upsell .up-sub, .home-upsell .up-mine { font-size: 13px; color: var(--muted); }
 .home-upsell .up-mine { margin-top: 2px; }
 .home-upsell .up-empty { margin: 8px 0 0; color: var(--muted); }
+.home-upsell { position: relative; }
 .home-upsell .up-details { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
 .home-upsell .up-details summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--muted); }
+/* Rincian melayang di bawah kartu saat dibuka, jadi tinggi kartu (dan kartu quote di sebelahnya) tidak berubah */
+.home-upsell .up-details[open] > .up-body { position: absolute; left: 0; right: 0; top: 100%; margin-top: 8px; z-index: 20; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 22px 16px; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5); }
 .home-upsell .up-group { margin-top: 12px; }
 .home-upsell .up-group-title { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
 .home-upsell .up-row { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 70px; align-items: center; gap: 10px; padding: 4px 0; font-size: 13px; }

@@ -652,10 +652,10 @@ function upsellSummaryHtml() {
     '<div class="up-total"><strong>' + d.teamSold + '</strong><span> of ' + d.teamTarget + ' items</span></div>' +
     '<span class="up-bar up-bar-lg"><span style="width:' + pct + '%"></span></span>' +
     (d.staff !== undefined ? '<div class="up-sub">' + d.staff + ' staff saved</div>' : '') + mine +
-    (shifts || items ? '<details class="up-details"><summary>Per shift and item</summary>' +
+    (shifts || items ? '<details class="up-details"><summary>Per shift and item</summary><div class="up-body">' +
       (shifts ? '<div class="up-group"><div class="up-group-title">Shift</div>' + shifts + '</div>' : '') +
       (items ? '<div class="up-group"><div class="up-group-title">Item</div>' + items + '</div>' : '') +
-      '</details>' : '') +
+      '</div></details>' : '') +
     '</section>';
 }
 
