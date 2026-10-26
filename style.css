@@ -461,15 +461,6 @@ main#app { padding-top: 22px; padding-bottom: 48px; }
 }
 
 /* Item nonaktif yang dilipat (hanya editor) */
-details.inactive-group { margin-top: 8px; }
-details.inactive-group summary {
-  cursor: pointer; list-style: none;
-  color: var(--muted); font-size: 13px; font-weight: 600;
-  padding: 10px 4px;
-}
-details.inactive-group summary::-webkit-details-marker { display: none; }
-details.inactive-group summary::before { content: "▸  "; }
-details.inactive-group[open] summary::before { content: "▾  "; }
 
 /* Upsell per item */
 .upsell-session { margin-bottom: 12px; }
@@ -526,13 +517,6 @@ ul.plain li:last-child { border-bottom: 0; }
 .nav-icon svg { width: 20px; height: 20px; fill: currentColor; display: block; }
 
 /* Our Guests: foto bisa diklik, catatan bisa dibuka */
-.guest-photo { flex: 0 0 76px; padding: 0; border: 0; background: none; cursor: pointer; }
-.guest-photo img { width: 76px; height: 76px; object-fit: cover; border-radius: 12px; display: block; }
-.clamp {
-  margin: 6px 0 0; white-space: pre-line;
-  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
-}
-.clamp.open { display: block; -webkit-line-clamp: unset; overflow: visible; }
 .more {
   background: none; border: 0; padding: 4px 0 0; color: var(--accent);
   font: inherit; font-size: 13px; font-weight: 600; cursor: pointer;
@@ -597,7 +581,6 @@ ul.plain li:last-child { border-bottom: 0; }
 
 /* Shift yang sedang berjalan */
 .upsell-session.now { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.now-badge { background: var(--accent); color: #fff; }
 
 /* Loading: bar di atas, spinner di tombol, spinner kecil di status */
 .progress-line {
@@ -670,9 +653,6 @@ ul.plain li:last-child { border-bottom: 0; }
 }
 
 /* Staff Bulletin: tipe dan warna */
-.green { --tag: #8FAA4B; --tag-bg: rgba(143, 170, 75, 0.16); }
-.yellow { --tag: #E0B43A; --tag-bg: rgba(224, 180, 58, 0.16); }
-.neutral { --tag: var(--muted); --tag-bg: var(--elevated); }
 .bl-legend { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 12px; }
 .bl-tag {
   display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.02em; padding: 3px 9px; border-radius: 999px;

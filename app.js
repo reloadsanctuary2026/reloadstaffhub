@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.62.3";
+const APP_VERSION = "2.63.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -627,8 +627,7 @@ function viewHome() {
       homeCol("Our Guests", "guests",
         guests.length ? guests.map(guestCard).join("") : emptyState("No active guest notes."),
         '<button class="ghost small-link" type="button" onclick="openGuestsLanding()">View all</button>') +
-      homeCol("Upsell Today", "upsell", upsellPanel(),
-        canEdit() ? '<button class="ghost small-link" type="button" onclick="fillUpsellShifts()">Fill missing shifts</button>' : '') +
+      homeCol("Upsell Today", "upsell", upsellPanel()) +
       homeCol("Staff Bulletin", "bulletin",
         news.length ? news.map(bulletinCard).join("") : emptyState("No active bulletin yet."),
         '<button class="ghost small-link" type="button" onclick="openBulletinLanding()">View all</button>') +
@@ -636,36 +635,8 @@ function viewHome() {
 }
 
 /** One column on Home: title + add button, then its content. */
-/** Adds the missing session rows (Morning M6+M8, Afternoon M11+MD12, Evening E2) for today. Editors only. */
-async function fillUpsellShifts() {
-  try {
-    const res = await api("fillUpsellSessionsForDate", [sessionToken, isoDate(new Date())]);
-    const added = (res && res.added) || [], failed = (res && res.failed) || [];
-    if (failed.length) alert("Some rows were not added:\n" + failed.join("\n"));
-    toast(added.length ? "Added " + added.length + " missing row(s)." : "Nothing missing.");
-    refreshSheet("upsell");
-  } catch (e) {
-    if (isSessionExpired(e)) return handleApiError(e);
-    toast(e.message);
-  }
-}
-
-function homeCol(title, sheetKey, body, extra) {
-  return '<section class="home-col">' + sectionHead(title, sheetKey, extra) + body + '</section>';
-}
-
-/** The shift running right now, or null if none matches. */
-function currentShift() {
-  const now = new Date();
-  const minutes = now.getHours() * 60 + now.getMinutes();
-  let best = null;
-  let bestStart = -1;
-  SHIFT_NAMES.forEach(name => {
-    const [h, m] = SHIFT_START[name].split(":").map(Number);
-    const start = h * 60 + m;
-    if (start <= minutes && start > bestStart) { best = name; bestStart = start; }
-  });
-  return best;
+function homeCol(title, sheetKey, body) {
+  return '<section class="home-col">' + sectionHead(title, sheetKey) + body + '</section>';
 }
 
 /**
@@ -1239,12 +1210,6 @@ function sortGuests(rows, mode) {
   return newestFirst(rows);
 }
 
-function guestPhoto(r, cls) {
-  return r.image
-    ? '<img class="' + cls + '" src="' + imgUrl(r.image) + '" alt="" loading="lazy">'
-    : '<div class="' + cls + ' gph">' + esc(initial(r.guest)) + '</div>';
-}
-
 function guestTile(r) {
   return '<div class="guest-tile' + inactiveClass(r) + '" role="button" tabindex="0" onclick="openGuest(' + r._row + ')">' +
     guestPhotoHtml(r, "guest-tile-img") +
@@ -1527,20 +1492,6 @@ function viewAbout() {
         ).join("") +
         '</div>'
       : emptyState("No information yet."));
-}
-
-/**
- * Active items show normally. Inactive items (editors only) are folded
- * into one collapsed section so the main list stays short.
- */
-function listWithInactive(rows, renderItem) {
-  const active = rows.filter(isActive);
-  const inactive = rows.filter(r => !isActive(r));
-  const activeHtml = active.map(renderItem).join("");
-  if (!inactive.length) return activeHtml;
-  return activeHtml +
-    '<details class="inactive-group"><summary>Inactive (' + inactive.length + ')</summary>' +
-    inactive.map(renderItem).join("") + '</details>';
 }
 
 /* ---------- EDIT / ADD BUTTONS ---------- */
