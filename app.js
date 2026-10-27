@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.67.0";
+const APP_VERSION = "2.67.1";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -682,7 +682,7 @@ function upsellPanel() {
 function bulletinCard(r) {
   return '<div class="note clickable' + inactiveClass(r) + '" onclick="openDetail(\'bulletin\',' + r._row + ')"><div class="note-body">' +
     (r.image ? photoBtn(r.image, '<img class="bl-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">') : '') +
-    '<div class="small muted">' + esc(r.date) + (r.type ? ' · ' + esc(r.type) : '') + statusBadge(r) + '</div>' +
+    '<div class="small muted">' + esc(r.date) + (r.type ? ' · ' + esc(r.type) : '') + statusBadge(r, "bulletin") + '</div>' +
     '<div class="note-title">' + esc(r.title) + '</div>' +
     '<p class="pre muted">' + esc(r.description) + '</p>' +
     editBtn("bulletin", r, true) + '</div></div>';
@@ -1217,7 +1217,7 @@ function guestTile(r) {
   return '<div class="guest-tile' + inactiveClass(r) + '" role="button" tabindex="0" onclick="openGuest(' + r._row + ')">' +
     guestPhotoHtml(r, "guest-tile-img") +
     '<div class="guest-tile-body"><strong>' + esc(r.guest) + '</strong>' +
-      '<span class="badge">' + esc(r.category) + '</span>' + statusBadge(r) +
+      '<span class="badge">' + esc(r.category) + '</span>' + statusBadge(r, "guests") +
       '<span class="small muted">' + esc(r.date) + '</span></div>' +
   '</div>';
 }
@@ -1226,7 +1226,7 @@ function guestLine(r) {
     guestPhotoHtml(r, "guest-line-img") +
     '<span class="guest-line-body"><strong>' + esc(r.guest) + '</strong>' +
       '<span class="small muted">' + esc(r.category) + ' · ' + esc(r.date) + '</span></span>' +
-    statusBadge(r) +
+    statusBadge(r, "guests") +
     '<span class="chev">›</span>' +
   '</div>';
 }
@@ -1551,16 +1551,16 @@ function isActive(rec) {
 }
 
 function showItem(rec) {
-  return currentCanEdit || isActive(rec);
+  return canEditSheet("guests") || isActive(rec);
 }
 
 function inactiveClass(rec) {
   return isActive(rec) ? "" : " is-inactive";
 }
 
-/** The "Inactive" label is for editors only. Staff never see inactive items. */
-function statusBadge(rec) {
-  if (!currentCanEdit || isActive(rec)) return "";
+/** The "Inactive" label is for editors (and guest editors on Our Guests). Staff never see inactive items. */
+function statusBadge(rec, sheetKey) {
+  if (!canEditSheet(sheetKey) || isActive(rec)) return "";
   return ' <span class="badge off">Inactive</span>';
 }
 
@@ -1627,7 +1627,7 @@ function openEdit(sheetKey, row) {
 
   formState = { mode: "edit", sheetKey: sheetKey, row: row, original: rec };
   const restored = takeDraft("edit", sheetKey, row);
-  showForm("Edit " + SHEET_LABELS[sheetKey], restored || rec, canEdit());
+  showForm("Edit " + SHEET_LABELS[sheetKey], restored || rec, canEditSheet(sheetKey));
 }
 
 function showForm(title, values, canDelete) {
