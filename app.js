@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.66.0";
+const APP_VERSION = "2.67.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -145,6 +145,7 @@ const BULLETIN_HOME_LIMIT = 5;
 let currentJobTitle = "";   // used to show My Upsell to servers only
 let currentBusinessUnit = "";   // Upsell tabs are for the F&B business unit only
 let currentCanEdit = false;   // from the backend (canEditTier_), the single source of truth
+let currentCanEditGuests = false;   // Hostess job title: can add and edit Our Guests only (canEditGuests_)
 let appData = null;
 let activeTab = "home";
 let searchText = "";
@@ -302,6 +303,7 @@ function enterApp(user) {
   currentName = user.name || "";
   currentNickname = user.nickname || "";
   currentCanEdit = !!user.canEdit;
+  currentCanEditGuests = !!user.canEditGuests;
   currentJobTitle = user.jobTitle || "";
   currentBusinessUnit = user.businessUnit || "";
   document.getElementById("loginScreen").classList.add("hidden");
@@ -354,6 +356,7 @@ function endSession() {
   currentName = "";
   currentNickname = "";
   currentCanEdit = false;
+  currentCanEditGuests = false;
   writeStore_("rsh_token", null);
   appData = null;
   loadedKeys = {};
@@ -1144,7 +1147,7 @@ function viewGuestsLanding() {
         [["newest", "Newest"], ["oldest", "Oldest"], ["name-asc", "Name A-Z"], ["name-desc", "Name Z-A"]]
           .map(o => '<option value="' + o[0] + '"' + (guestFilter.sort === o[0] ? ' selected' : '') + '>' + o[1] + '</option>').join("") +
       '</select>' +
-      (canEdit()
+      (canEditSheet("guests")
         ? '<select class="input gl-status" aria-label="Filter by status" onchange="guestStatus(this.value)">' +
             [["all", "All status"], ["active", "Active"], ["inactive", "Inactive"]].map(o =>
               '<option value="' + o[0] + '"' + (guestFilter.status === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'
@@ -1528,6 +1531,11 @@ function canEdit() {
   return currentCanEdit;
 }
 
+/** Add and Edit for one sheet. Our Guests also opens for the Hostess job title. */
+function canEditSheet(sheetKey) {
+  return sheetKey === "guests" ? (currentCanEdit || currentCanEditGuests) : currentCanEdit;
+}
+
 /**
  * Items shown: staff only see ACTIVE ones, editors see all
  * so they can reactivate inactive items.
@@ -1565,13 +1573,13 @@ function sectionHead(title, sheetKey, extra) {
 const HR_SOURCED = ["teams"];
 
 function addBtn(sheetKey, label) {
-  if (!canEdit() || HR_SOURCED.indexOf(sheetKey) !== -1) return "";
+  if (!canEditSheet(sheetKey) || HR_SOURCED.indexOf(sheetKey) !== -1) return "";
   return '<button class="add-btn" type="button" onclick="openAdd(\'' + sheetKey + '\')">' + esc(label) + '</button>';
 }
 
 function editBtn(sheetKey, rec, corner) {
   if (HR_SOURCED.indexOf(sheetKey) !== -1) return "";
-  if (!canEdit() || !rec || !rec._row) return "";
+  if (!canEditSheet(sheetKey) || !rec || !rec._row) return "";
   return '<button class="edit-btn' + (corner ? ' corner-edit' : '') + '" type="button" onclick="event.stopPropagation();closeDetail();openEdit(\'' + sheetKey + '\',' + rec._row + ')">Edit</button>';
 }/* ---------- FORM (tambah, edit, hapus) ---------- */
 
@@ -1619,7 +1627,7 @@ function openEdit(sheetKey, row) {
 
   formState = { mode: "edit", sheetKey: sheetKey, row: row, original: rec };
   const restored = takeDraft("edit", sheetKey, row);
-  showForm("Edit " + SHEET_LABELS[sheetKey], restored || rec, true);
+  showForm("Edit " + SHEET_LABELS[sheetKey], restored || rec, canEdit());
 }
 
 function showForm(title, values, canDelete) {
