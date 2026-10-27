@@ -7,7 +7,7 @@
 const TRACKER_XLSX_URL = "vendor/xlsx.full.min.js";
 const TRACKER_PDF_URL = "./vendor/pdf.min.mjs";   // import() needs ./ in front
 const TRACKER_PDF_WORKER_URL = "vendor/pdf.worker.min.mjs";
-const ROSTER_SHIFTS = ["M6", "M7", "M8", "M11", "MD12", "E2", "EO"];
+const ROSTER_SHIFTS = ["M6", "M8", "M11", "MD12", "E2"];
 
 let tracker = { date: "", lines: null, salesName: "", roster: null, rosterName: "", rosterShifts: {}, staff: null, staffBusy: false, filter: "all", busy: "", unlinkedNames: [] };
 let myUpsell = { recap: null, loading: false, date: "" };
@@ -1198,6 +1198,7 @@ function viewSchedule() {
     (edit && schedule.lastBatch && schedule.lastBatch.tab === schedule.tab && !scheduleHasChanges() && !schedule.editing
       ? '<button type="button" class="ghost small" onclick="undoLastScheduleSave()">Undo last save</button>' : '') +
     (edit ? '<button type="button" class="ghost small" onclick="toggleScheduleLeave()">' + (schedule.showLeave ? 'Hide credits' : 'Credits') + '</button>' : '') +
+    (edit && !schedule.editing ? '<button type="button" class="ghost small" onclick="newScheduleTab()">+ New month tab</button>' : '') +
     '</div>';
   if (!isPhoneWidth()) html += schedulePendingBarHtml();
 
@@ -1209,6 +1210,7 @@ function viewSchedule() {
   const saved = schedule.data;
   if (isPhoneWidth()) return html + viewScheduleMobile(saved);
   const full = scheduleEffective(saved);
+  full.people = applyScheduleOrder(full.people, schedule.tab);
   const n = full.days.length;
   const w = scheduleWindow(n);
   const d = {
@@ -1235,7 +1237,11 @@ function viewSchedule() {
         esc(block) + '<span>' + count + ' staff</span></td></tr>';
     }
     body += '<tr class="sch-row' + (isMySchedule(p.name) ? ' mine' : '') + '">' +
-      '<td class="sch-name">' + esc(p.name) + '</td><td class="sch-role">' + esc(p.role || p.position) + '</td>' +
+      '<td class="sch-name" draggable="true" title="Drag to reorder within this block (this screen only)"' +
+        ' ondragstart="schDragStart(event,' + p.row + ',\'' + p.block + '\')"' +
+        ' ondragover="schDragOver(event,\'' + p.block + '\')"' +
+        ' ondrop="schDrop(event,' + p.row + ',\'' + p.block + '\')">' + esc(p.name) + '</td>' +
+      '<td class="sch-role">' + esc(p.role || p.position) + '</td>' +
       p.cells.map((c, i) => {
         const full_i = i + w.a;
         const isPending = schedule.pending[scheduleKey(p.row, full_i)] !== undefined;
@@ -1247,7 +1253,90 @@ function viewSchedule() {
   const editHint = editing ? 'Changes stay in draft until you press Save. PH, DP, EO, and AL rules are checked on save. ' : '';
   return html + countPanelHtml(full) +
     '<div class="sch-wrap"><table class="sch sch-grid" style="width:' + (210 + 104 + 60 * d.days.length) + 'px"><colgroup><col class="c-name"><col class="c-role">' + d.days.map(() => '<col class="c-day">').join("") + '</colgroup><thead>' + head + '</thead><tbody>' + body + '</tbody><tfoot>' + scheduleFooterHtml(d) + '</tfoot></table></div>' +
-    '<p class="sch-legend">' + editHint + 'Shaded = shift. RS = Reload Social event duty. OFF, OFF/R, DC (sick), EO (extra off), NPL (unpaid leave), DP, AL (annual leave), and PH = no floor shift.</p>';
+    '<p class="sch-legend">' + editHint + 'Drag a name within its block to change the order on this screen only. Shaded = shift. RS = Reload Social event duty. OFF, OFF/R, DC (sick), EO (extra off), NPL (unpaid leave), DP, AL (annual leave), and PH = no floor shift.</p>';
+}
+
+/* ----- order of names on this screen (per device, not saved to the sheet) ----- */
+
+function scheduleOrderAll() {
+  try { return JSON.parse(localStorage.getItem("sch-order") || "{}"); } catch (e) { return {}; }
+}
+
+/** Sorts the names inside each block by the saved order. Names not in the saved order keep their place at the end. */
+function applyScheduleOrder(people, tab) {
+  const saved = (scheduleOrderAll()[tab]) || {};
+  const blocks = [];
+  people.forEach(p => { if (blocks.indexOf(p.block) === -1) blocks.push(p.block); });
+  const out = [];
+  blocks.forEach(function (b) {
+    const rank = saved[b] || [];
+    const list = people.filter(p => p.block === b).map(function (p, i) { return { p: p, i: i }; });
+    list.sort(function (x, y) {
+      const rx = rank.indexOf(x.p.row), ry = rank.indexOf(y.p.row);
+      return (rx === -1 ? 1e9 : rx) - (ry === -1 ? 1e9 : ry) || x.i - y.i;
+    });
+    list.forEach(item => out.push(item.p));
+  });
+  return out;
+}
+
+let scheduleDragging = null;
+
+function schDragStart(ev, row, block) {
+  scheduleDragging = { row: row, block: block };
+  ev.dataTransfer.effectAllowed = "move";
+  ev.dataTransfer.setData("text/plain", String(row));
+}
+
+function schDragOver(ev, block) {
+  if (scheduleDragging && scheduleDragging.block === block) {
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = "move";
+  }
+}
+
+/** Moves the dragged name to the place of the row it is dropped on. Same block only. */
+function schDrop(ev, row, block) {
+  if (!scheduleDragging || scheduleDragging.block !== block || scheduleDragging.row === row) return;
+  ev.preventDefault();
+  const tab = schedule.tab;
+  const order = applyScheduleOrder(schedule.data.people, tab).filter(p => p.block === block).map(p => p.row);
+  order.splice(order.indexOf(scheduleDragging.row), 1);
+  order.splice(order.indexOf(row), 0, scheduleDragging.row);
+  const all = scheduleOrderAll();
+  all[tab] = all[tab] || {};
+  all[tab][block] = order;
+  try { localStorage.setItem("sch-order", JSON.stringify(all)); } catch (e) { /* private window: order lasts this page only */ }
+  scheduleDragging = null;
+  renderTab();
+}
+
+/* ----- new month tab (manual, editors) ----- */
+
+/** The month after the given tab name, e.g. "NOV" -> "DEC". Empty if the name is not a month. */
+function nextMonthName(tabName) {
+  const up = String(tabName || "").toUpperCase();
+  const idx = SCHEDULE_MONTHS.findIndex(names => names.some(n => up.indexOf(n) === 0));
+  return idx === -1 ? "" : SCHEDULE_MONTHS[(idx + 1) % 12][0];
+}
+
+function newScheduleTab() {
+  if (!canEdit()) return;
+  const last = (schedule.tabs || [])[(schedule.tabs || []).length - 1] || "";
+  const name = prompt("Name of the new tab. It copies the newest tab (" + last + "), then fix the days and names by hand.", nextMonthName(last));
+  if (!name || !clean(name)) return;
+  api("duplicateScheduleTab", [sessionToken, clean(name)])
+    .then(function (res) {
+      schedule.tabs = null;
+      schedule.tab = res.tab;
+      schedule.data = null;
+      toast("Created " + res.tab + " from " + res.copiedFrom + ".");
+      renderTab();
+    })
+    .catch(function (e) {
+      if (isSessionExpired(e)) return handleApiError(e);
+      toast(e.message);
+    });
 }
 
 /* ----- picking a code ----- */
