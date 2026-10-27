@@ -104,7 +104,7 @@ async function readRosterFile(file) {
   const doc = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
   const staff = serverStaff();
   let text = "";
-  const shifts = {};
+  const shifts = {};   // nik -> shift code
   for (let p = 1; p <= doc.numPages; p++) {
     const page = await doc.getPage(p);
     const items = (await page.getTextContent()).items
@@ -117,35 +117,57 @@ async function readRosterFile(file) {
 }
 
 /**
- * On one page: find each staff name in the board, and the shift header above it (M6, M7, ...)
- * whose column is closest to the name's centre. Names outside a shift table (notes, duties) are skipped.
+ * Names a staff member can appear under on the section board: full name, nickname (4+ letters),
+ * and the POS names linked to them in 13_PosWaiterMap. Full name first.
+ */
+function staffAliases(s) {
+  const keys = [trackerNameKey(s.name)];
+  const nick = trackerNameKey(s.nickname);
+  if (nick.length >= 4) keys.push(nick);
+  (appData.posMap || []).forEach(function (r) {
+    if (r.nik === s.nik && r.pos) keys.push(trackerNameKey(r.pos));
+  });
+  return keys.filter(function (k, i) { return k && keys.indexOf(k) === i; });
+}
+
+/** Where a name (word sequence) sits on the page: its items and centre x, or null if not there. */
+function findNameOnPage(items, key) {
+  for (let i = 0; i < items.length; i++) {
+    if (!trackerNameKey(items[i].str)) continue;   // skip marks such as (7) or ★
+    let joined = "";
+    for (let k = i; k < items.length && k < i + 8; k++) {
+      joined = trackerNameKey(joined + " " + items[k].str);
+      if (joined === key) {
+        const parts = items.slice(i, k + 1);
+        const cx = parts.reduce((a, p) => a + p.x + p.w / 2, 0) / parts.length;
+        return { y: items[i].y, cx: cx };
+      }
+      if (joined.length > key.length) break;
+    }
+  }
+  return null;
+}
+
+/**
+ * On one page: find each staff member's name (or an alias) in the board, and the shift header above it
+ * (M6, M7, ...) whose column is closest to the name's centre. Names outside a shift table are skipped.
  */
 function readShiftsFromItems(items, staff, shifts) {
   const headers = items.filter(i => ROSTER_SHIFTS.indexOf(i.str) !== -1).map(h => ({ str: h.str, y: h.y, cx: h.x + h.w / 2 }));
   if (!headers.length) return;
   staff.forEach(function (s) {
-    const key = trackerNameKey(s.name);
-    if (!key || shifts[key]) return;
-    for (let i = 0; i < items.length; i++) {
-      if (!trackerNameKey(items[i].str)) continue;   // skip marks such as (7) or ★
-      let joined = "";
-      for (let k = i; k < items.length && k < i + 8; k++) {
-        joined = trackerNameKey(joined + " " + items[k].str);
-        if (joined === key) {
-          const parts = items.slice(i, k + 1);
-          const cx = parts.reduce((a, p) => a + p.x + p.w / 2, 0) / parts.length;
-          const y = items[i].y;
-          const above = headers.filter(h => h.y > y);
-          if (!above.length) return;
-          const hdrY = above.reduce((best, h) => (h.y - y < best.y - y ? h : best)).y;
-          const cols = headers.filter(h => h.y === hdrY);
-          const col = cols.reduce((best, h) => (Math.abs(h.cx - cx) < Math.abs(best.cx - cx) ? h : best));
-          shifts[key] = col.str;
-          return;
-        }
-        if (joined.length > key.length) break;
-      }
-    }
+    if (shifts[s.nik]) return;
+    staffAliases(s).some(function (key) {
+      const hit = findNameOnPage(items, key);
+      if (!hit) return false;
+      const above = headers.filter(h => h.y > hit.y);
+      if (!above.length) return true;
+      const hdrY = above.reduce((best, h) => (h.y - hit.y < best.y - hit.y ? h : best)).y;
+      const cols = headers.filter(h => h.y === hdrY);
+      const col = cols.reduce((best, h) => (Math.abs(h.cx - hit.cx) < Math.abs(best.cx - hit.cx) ? h : best));
+      shifts[s.nik] = col.str;
+      return true;
+    });
   });
 }
 
@@ -265,12 +287,12 @@ function trackerResults(dateIso, items) {
 /** Staff whose full name is on the section board. */
 function onDutyNiks(staff, rosterText) {
   const text = " " + trackerNameKey(rosterText) + " ";
-  return staff.filter(s => text.indexOf(" " + trackerNameKey(s.name) + " ") !== -1).map(s => s.nik);
+  return staff.filter(s => staffAliases(s).some(k => text.indexOf(" " + k + " ") !== -1)).map(s => s.nik);
 }
 
 /** Shift of one staff member on the section board (M6, E2, ...), or "" if not found. */
-function shiftOfStaff(staffName) {
-  return (tracker.rosterShifts || {})[trackerNameKey(staffName)] || "";
+function shiftOfStaff(nik) {
+  return (tracker.rosterShifts || {})[nik] || "";
 }
 
 function sumItems(items) {
@@ -355,7 +377,7 @@ function viewTracker() {
   const rows = Object.keys(nikList).map(function (nik) {
     const s = staffByNik[nik] || { name: nik, nickname: "" };
     const p = res.people[nik] || { pos: [], items: {} };
-    const shift = shiftOfStaff(s.name);
+    const shift = shiftOfStaff(nik);
     const targets = {};
     items.forEach(it => { targets[it.item] = shift ? shiftTarget(tracker.date, it.item, shift) : 0; });
     return { nik: nik, name: s.name, shift: shift, pos: p.pos, items: p.items, targets: targets, total: sumItems(p.items), onRoster: onDuty.indexOf(nik) !== -1 };
