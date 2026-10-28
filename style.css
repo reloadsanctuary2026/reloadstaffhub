@@ -609,6 +609,23 @@ ul.plain li:last-child { border-bottom: 0; }
 
 /* Kartu tamu di Home. HP: foto dan nama di atas, catatan di bawah. Desktop: catatan di kanan. */
 .note.guest { display: flex; flex-direction: column; gap: 8px; padding: 12px; margin-bottom: 10px; }
+/* Our Guests: warna per kategori. Birthday punya cincin berkilau dan kue yang bergoyang. */
+.note.guest[style*="--tag"] { border-left: 4px solid var(--tag); }
+.note.guest.is-birthday { position: relative; border-left: 1px solid var(--border); isolation: isolate; }
+.note.guest.is-birthday::before {
+  content: ""; position: absolute; inset: -1px; z-index: -1; border-radius: inherit; padding: 2px;
+  background: linear-gradient(120deg, #E7799B, #E0B43A, #7FD1C4, #E7799B); background-size: 300% 300%;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: bdayGlow 4s linear infinite;
+}
+.gc-cat { font-size: 11px; font-weight: 700; color: var(--tag); background: var(--tag-bg); border-color: var(--tag); width: fit-content; margin-bottom: 4px; }
+.bday-cake { display: inline-block; animation: cakeBob 1.6s ease-in-out infinite; transform-origin: 50% 80%; }
+@keyframes bdayGlow { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
+@keyframes cakeBob { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-2px) rotate(-8deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .note.guest.is-birthday::before, .bday-cake { animation: none; }
+}
 .guest-card-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .guest-card-photo {
   width: 52px; height: 52px; flex: 0 0 52px; border-radius: 12px; object-fit: cover;

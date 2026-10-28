@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.68.1";
+const APP_VERSION = "2.69.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -613,7 +613,7 @@ function renderActiveView() {
 function viewHome() {
   const quotes = appData.inspiration.filter(r => r.greeting === dayPart().key);
   const quote = quotes.length ? quotes[new Date().getDate() % quotes.length] : null;
-  const guests = newestFirst(appData.guests.filter(isActive)).slice(0, GUEST_HOME_LIMIT);
+  const guests = newestFirst(appData.guests.filter(isActive).filter(r => !isExpiredBirthday(r))).slice(0, GUEST_HOME_LIMIT);
   const news = newestFirst(appData.bulletin.filter(isActive)).slice(0, BULLETIN_HOME_LIMIT);
 
   return '<div class="home-top"><section class="hero">' +
@@ -1069,17 +1069,39 @@ function clipText(text, n) {
  * Guest card on Home. Note snippet is 50 characters on phones and 80 on desktop (set by CSS).
  * Read more only expands the text in place, it does not open a pop-up.
  */
+/** Colour per guest category. Birthday glows; the others get a coloured edge and a tag. */
+const GUEST_CATEGORY_COLORS = {
+  Birthday: "#E7799B", VIP: "#E0B43A", Complaint: "#D9534F", Preference: "#6FA8DC",
+  Achievement: "#8FAA4B", Celebration: "#B07CD8", Farewell: "#9AA0A6"
+};
+
+/** Inline colour variables for a guest category (same format as bulletinStyle). */
+function guestCatStyle(cat) {
+  const c = GUEST_CATEGORY_COLORS[cat] || "#AA7655";
+  return 'style="--tag:' + c + ';--tag-bg:color-mix(in srgb, ' + c + ' 16%, transparent)"';
+}
+
+/** A birthday shows on its day, then is hidden from the views (the sheet row stays). */
+function isExpiredBirthday(r) {
+  if (r.category !== "Birthday") return false;
+  const iso = isoFromSheetDate(r.date);
+  return !!iso && iso < isoDate(new Date());
+}
+
 function guestCard(r) {
   const text = String(r.description || "");
   const phoneMore = text.length > GUEST_PREVIEW_PHONE;
   const desktopMore = text.length > GUEST_PREVIEW_DESKTOP;
-  return '<div class="note guest' + inactiveClass(r) + '">' +
+  const isBirthday = r.category === "Birthday";
+  return '<div class="note guest' + (isBirthday ? ' is-birthday' : '') + inactiveClass(r) + '" ' + guestCatStyle(r.category) + '>' +
     '<div class="guest-card-head">' +
       (r.image
         ? photoBtn(r.image, '<img class="guest-card-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">')
         : '<div class="guest-card-photo gph">' + esc(initial(r.guest)) + '</div>') +
       '<div class="guest-card-main">' +
         '<strong>' + esc(r.guest) + '</strong>' +
+        '<span class="bl-tag gc-cat ' + (isBirthday ? 'is-birthday-tag' : '') + '">' +
+          (isBirthday ? '<span class="bday-cake" aria-hidden="true">🎂</span> ' : '') + esc(r.category || "Guest") + '</span>' +
         '<span class="small muted">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</span>' +
       '</div>' +
     '</div>' +
@@ -1179,7 +1201,7 @@ function guestChips() {
 
 /** Guests the user may see, then narrowed by status. Used for the list and the category chip counts. */
 function guestBaseRows() {
-  const rows = appData.guests.filter(showItem);
+  const rows = appData.guests.filter(showItem).filter(r => !isExpiredBirthday(r));
   if (guestFilter.status === "active") return rows.filter(isActive);
   if (guestFilter.status === "inactive") return rows.filter(r => !isActive(r));
   return rows;
