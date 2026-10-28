@@ -705,6 +705,17 @@ function loadUpsellSummary() {
 const REPORT_LOGO_SVG = '<svg viewBox="0 0 953 958" aria-hidden="true"><path d="M0 0H620A292 295 0 0 1 660 592L950 955H725L455 620H258L155 480H560A170 170 0 0 0 570 142H0Z"/></svg>';
 const REPORT_DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
+/** Colour state of one item in the report: miss (0 sold, target asked), part (under target), hit (target), over (above target). */
+function itemState(sold, target) {
+  if (target > 0) {
+    if (sold === 0) return "miss";
+    if (sold < target) return "part";
+    if (sold === target) return "hit";
+    return "over";
+  }
+  return sold > 0 ? "over" : "";   // sold something that was not asked
+}
+
 function buildUpsellReportHtml(rep) {
   const staff = rep.staff || [];
   const sold = staff.filter(s => s.sold > 0).length;
@@ -734,7 +745,7 @@ function buildUpsellReportHtml(rep) {
   }).join("");
 
   const staffRows = staff.map(function (s) {
-    const chips = s.items.map(i => '<span class="chip">' + esc(i.item) + ' <b>' + i.sold + '/' + i.target + '</b></span>').join("");
+    const chips = s.items.map(i => '<span class="chip ' + itemState(i.sold, i.target) + '">' + esc(i.item) + ' <b>' + i.sold + '/' + i.target + '</b></span>').join("");
     const status = s.sold > 0 ? '<span class="pill sold">Sold</span>' : '<span class="pill none">Not sold yet</span>';
     return '<tr><td><strong>' + esc(s.name) + '</strong></td><td>' + esc(s.shift || "—") + '</td><td>' + status + '</td><td>' + (chips || '—') + '</td><td class="num">' + s.sold + ' / ' + s.target + '</td></tr>';
   }).join("");
@@ -744,6 +755,7 @@ function buildUpsellReportHtml(rep) {
     '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap">' +
     '<style>' +
     '@page { size: A4; margin: 0; }' +
+    '* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }' +
     '* { box-sizing: border-box; }' +
     'body { margin: 0; font-family: Poppins, "Segoe UI", Arial, sans-serif; color: #2b211b; background: #f3ede6; }' +
     '.page { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; }' +
@@ -765,6 +777,13 @@ function buildUpsellReportHtml(rep) {
     '.num { text-align: right; white-space: nowrap; }' +
     '.chip { display: inline-block; background: #f6ece3; color: #5b4636; border-radius: 999px; padding: 2px 8px; margin: 2px 4px 2px 0; font-size: 11px; }' +
     '.chip b { color: #AA7655; }' +
+    '.chip.miss { background: #fbe4e1; color: #9b1c14; } .chip.miss b { color: #9b1c14; }' +
+    '.chip.part { background: #fff1d6; color: #8a5a00; } .chip.part b { color: #8a5a00; }' +
+    '.chip.hit { background: #e1f2e5; color: #1e6b34; } .chip.hit b { color: #1e6b34; }' +
+    '.chip.over { background: #e0eefb; color: #1a5c94; } .chip.over b { color: #1a5c94; }' +
+    '.legend { font-size: 10px; color: #6b5a4e; margin: 6px 0 0; }' +
+    '.legend span { display: inline-block; margin-right: 14px; }' +
+    '.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 4px; vertical-align: -1px; }' +
     '.pill { display: inline-block; border-radius: 999px; padding: 3px 10px; font-size: 11px; font-weight: 600; }' +
     '.pill.sold { background: #AA7655; color: #fff; }' +
     '.pill.none { background: #ece6e0; color: #6b5a4e; }' +
@@ -788,6 +807,7 @@ function buildUpsellReportHtml(rep) {
     '<table><thead><tr><th>Item</th><th class="num">Sold</th><th class="num">Target</th><th class="num">Achieved</th></tr></thead><tbody>' + (itemRows || '<tr><td colspan="4">No items</td></tr>') + '</tbody></table>' +
     '<h2>By server</h2>' +
     '<table><thead><tr><th>Server</th><th>Shift</th><th>Status</th><th>Items (sold / target)</th><th class="num">Total</th></tr></thead><tbody>' + (staffRows || '<tr><td colspan="5">No results</td></tr>') + '</tbody></table>' +
+    '<p class="legend"><span><i style="background:#9b1c14"></i>Not sold</span><span><i style="background:#8a5a00"></i>Sold, under target</span><span><i style="background:#1e6b34"></i>Target reached</span><span><i style="background:#1a5c94"></i>Above target</span></p>' +
     '<div class="foot"><span>Saved by ' + esc(rep.savedBy || "—") + ' · Printed by ' + esc(rep.generatedBy) + ' · ' + esc(rep.generatedAt) + '</span><span>Reload Staff Hub</span></div>' +
     '</div></div></body></html>';
 }
