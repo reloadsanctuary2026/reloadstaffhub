@@ -105,15 +105,16 @@ async function readRosterFile(file) {
   const staff = serverStaff();
   let text = "";
   const shifts = {};   // nik -> shift code
+  const found = {};    // nik -> true, for everyone whose name is on the board
   for (let p = 1; p <= doc.numPages; p++) {
     const page = await doc.getPage(p);
     const items = (await page.getTextContent()).items
       .filter(i => i.str && i.str.trim())
       .map(i => ({ str: i.str.trim(), x: i.transform[4], y: i.transform[5], w: i.width || 0 }));
     text += items.map(i => i.str).join(" ") + " ";
-    readShiftsFromItems(items, staff, shifts);
+    readShiftsFromItems(items, staff, shifts, found);
   }
-  return { text: text, shifts: shifts };
+  return { text: text, shifts: shifts, found: found };
 }
 
 /**
@@ -130,14 +131,23 @@ function staffAliases(s) {
   return keys.filter(function (k, i) { return k && keys.indexOf(k) === i; });
 }
 
-/** Where a name (word sequence) sits on the page: its items and centre x, or null if not there. */
-function findNameOnPage(items, key) {
+/** Two words on the same line with only a word gap between them (not two columns apart). */
+function wordsTouch(a, b) {
+  return !!a && !!b && Math.abs(a.y - b.y) < 2 && Math.abs(b.x - (a.x + a.w)) < 6;
+}
+
+/**
+ * Where a name (word sequence) sits on the page: its items and centre x, or null if not there.
+ * strict: a nickname or POS name must stand alone. "Wira" inside "Kadek Wira Wati" is not a match.
+ */
+function findNameOnPage(items, key, strict) {
   for (let i = 0; i < items.length; i++) {
     if (!trackerNameKey(items[i].str)) continue;   // skip marks such as (7) or ★
     let joined = "";
     for (let k = i; k < items.length && k < i + 8; k++) {
       joined = trackerNameKey(joined + " " + items[k].str);
       if (joined === key) {
+        if (strict && (wordsTouch(items[i - 1], items[i]) || wordsTouch(items[k], items[k + 1]))) break;
         const parts = items.slice(i, k + 1);
         const cx = parts.reduce((a, p) => a + p.x + p.w / 2, 0) / parts.length;
         return { y: items[i].y, cx: cx };
@@ -149,24 +159,24 @@ function findNameOnPage(items, key) {
 }
 
 /**
- * On one page: find each staff member's name (or an alias) in the board, and the shift header above it
- * (M6, M7, ...) whose column is closest to the name's centre. Names outside a shift table are skipped.
+ * On one page: find each staff member's name (or an alias) in the board. Records who is on the board (found)
+ * and, when a shift header sits above the name, the shift (M6, M8, ...) whose column is closest to the name.
  */
-function readShiftsFromItems(items, staff, shifts) {
+function readShiftsFromItems(items, staff, shifts, found) {
   const headers = items.filter(i => ROSTER_SHIFTS.indexOf(i.str) !== -1).map(h => ({ str: h.str, y: h.y, cx: h.x + h.w / 2 }));
-  if (!headers.length) return;
   staff.forEach(function (s) {
-    if (shifts[s.nik]) return;
-    staffAliases(s).some(function (key) {
-      const hit = findNameOnPage(items, key);
-      if (!hit) return false;
+    staffAliases(s).forEach(function (key, idx) {
+      if (found[s.nik] && shifts[s.nik]) return;
+      const hit = findNameOnPage(items, key, idx > 0);   // idx 0 is the full name: it can stand inside a longer line
+      if (!hit) return;
+      found[s.nik] = true;
+      if (shifts[s.nik] || !headers.length) return;
       const above = headers.filter(h => h.y > hit.y);
-      if (!above.length) return true;
+      if (!above.length) return;
       const hdrY = above.reduce((best, h) => (h.y - hit.y < best.y - hit.y ? h : best)).y;
       const cols = headers.filter(h => h.y === hdrY);
       const col = cols.reduce((best, h) => (Math.abs(h.cx - hit.cx) < Math.abs(best.cx - hit.cx) ? h : best));
       shifts[s.nik] = col.str;
-      return true;
     });
   });
 }
@@ -284,12 +294,6 @@ function trackerResults(dateIso, items) {
   return { people: people, unlinked: unlinked };
 }
 
-/** Staff whose full name is on the section board. */
-function onDutyNiks(staff, rosterText) {
-  const text = " " + trackerNameKey(rosterText) + " ";
-  return staff.filter(s => staffAliases(s).some(k => text.indexOf(" " + k + " ") !== -1)).map(s => s.nik);
-}
-
 /** Shift of one staff member on the section board (M6, E2, ...), or "" if not found. */
 function shiftOfStaff(nik) {
   return (tracker.rosterShifts || {})[nik] || "";
@@ -367,7 +371,7 @@ function viewTracker() {
   const servers = serverStaff();
   const serverNik = {};
   servers.forEach(s => { serverNik[s.nik] = true; });
-  const onDuty = tracker.roster ? onDutyNiks(servers, tracker.roster) : [];
+  const onDuty = tracker.roster ? servers.filter(s => (tracker.rosterFound || {})[s.nik]).map(s => s.nik) : [];
   const nikList = {};
   onDuty.forEach(n => { nikList[n] = true; });
   Object.keys(res.people).filter(n => serverNik[n]).forEach(n => { nikList[n] = true; });
@@ -511,6 +515,7 @@ async function onTrackerRoster(input) {
     const r = await readRosterFile(file);
     tracker.roster = r.text;
     tracker.rosterShifts = r.shifts;
+    tracker.rosterFound = r.found;
     tracker.rosterName = file.name;
   } catch (e) {
     tracker.roster = null;
