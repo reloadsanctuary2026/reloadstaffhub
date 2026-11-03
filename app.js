@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.69.0";
+const APP_VERSION = "2.70.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -238,6 +238,10 @@ window.addEventListener("load", async function () {
   document.getElementById("logoutBtn").addEventListener("click", doLogout);
   document.getElementById("editClose").addEventListener("click", closeForm);
   document.getElementById("guestClose").addEventListener("click", closeGuest);
+  document.getElementById("todayClose").addEventListener("click", closeToday);
+  document.getElementById("todayModal").addEventListener("click", function (e) {
+    if (e.target.id === "todayModal") closeToday();
+  });
   document.getElementById("detailClose").addEventListener("click", closeDetail);
   document.getElementById("detailModal").addEventListener("click", function (e) {
     if (e.target.id === "detailModal") closeDetail();
@@ -611,6 +615,7 @@ function renderActiveView() {
 /* ---------- HOME ---------- */
 
 function viewHome() {
+  setTimeout(maybeShowToday, 300);
   const quotes = appData.inspiration.filter(r => r.greeting === dayPart().key);
   const quote = quotes.length ? quotes[new Date().getDate() % quotes.length] : null;
   const guests = newestFirst(appData.guests.filter(isActive).filter(r => !isExpiredBirthday(r))).slice(0, GUEST_HOME_LIMIT);
@@ -1093,7 +1098,8 @@ function guestCard(r) {
   const phoneMore = text.length > GUEST_PREVIEW_PHONE;
   const desktopMore = text.length > GUEST_PREVIEW_DESKTOP;
   const isBirthday = r.category === "Birthday";
-  return '<div class="note guest' + (isBirthday ? ' is-birthday' : '') + inactiveClass(r) + '" ' + guestCatStyle(r.category) + '>' +
+  const isToday = isoFromSheetDate(r.date) === todayIso();
+  return '<div class="note guest' + (isBirthday ? ' is-birthday' : '') + (isToday ? ' is-today' : '') + inactiveClass(r) + '" ' + guestCatStyle(r.category) + '>' +
     '<div class="guest-card-head">' +
       (r.image
         ? photoBtn(r.image, '<img class="guest-card-photo" src="' + imgUrl(r.image) + '" alt="" loading="lazy">')
@@ -1101,7 +1107,7 @@ function guestCard(r) {
       '<div class="guest-card-main">' +
         '<strong>' + esc(r.guest) + '</strong>' +
         '<span class="bl-tag gc-cat ' + (isBirthday ? 'is-birthday-tag' : '') + '">' +
-          (isBirthday ? '<span class="bday-cake" aria-hidden="true">🎂</span> ' : '') + esc(r.category || "Guest") + '</span>' +
+          (isBirthday ? '<span class="bday-cake" aria-hidden="true">🎂</span> ' : '') + esc(r.category || "Guest") + (isToday ? ' · Today' : '') + '</span>' +
         '<span class="small muted">' + esc(r.date) + (r.title ? ' · ' + esc(r.title) : '') + '</span>' +
       '</div>' +
     '</div>' +
@@ -1141,6 +1147,44 @@ function openGuest(row) {
     editBtn("guests", r);
   document.getElementById("guestModal").classList.remove("hidden");
 }
+/* ---------- TODAY: birthdays and bulletins dated today ---------- */
+
+function todayIso() {
+  return isoDate(new Date());
+}
+
+/** Shows once per day per device: today's birthdays and bulletins, as a pop-up when the Home page opens. */
+function maybeShowToday() {
+  const key = "rsh_today_" + todayIso();
+  try {
+    if (localStorage.getItem(key)) return;
+  } catch (e) { /* private window: the pop-up may show again */ }
+  const t = todayIso();
+  const birthdays = (appData.guests || []).filter(r => isActive(r) && r.category === "Birthday" && isoFromSheetDate(r.date) === t);
+  const news = (appData.bulletin || []).filter(r => isActive(r) && isoFromSheetDate(r.date) === t);
+  if (!birthdays.length && !news.length) return;
+  try { localStorage.setItem(key, "1"); } catch (e) { /* ignore */ }
+
+  const bdayHtml = birthdays.map(r =>
+    '<div class="today-item today-bday">' +
+      '<div class="today-head"><span class="bday-cake" aria-hidden="true">🎂</span> <strong>' + esc(r.guest) + '</strong></div>' +
+      '<p class="small muted">' + esc(clipText(String(r.description || ""), 140)) + '</p>' +
+    '</div>').join("");
+  const newsHtml = news.map(r =>
+    '<div class="today-item">' +
+      '<div class="today-head"><span class="bl-tag" ' + bulletinStyle(r.type) + '>' + esc(r.type || "Info") + '</span> <strong>' + esc(r.title) + '</strong></div>' +
+      '<p class="small muted">' + esc(clipText(String(r.description || ""), 140)) + '</p>' +
+    '</div>').join("");
+  document.getElementById("todayTitle").innerText = "Today · " + formatSheetDate(new Date());
+  document.getElementById("todayBody").innerHTML = bdayHtml + newsHtml;
+  document.getElementById("todayModal").classList.remove("hidden");
+}
+
+function closeToday() {
+  const modal = document.getElementById("todayModal");
+  if (modal) modal.classList.add("hidden");
+}
+
 function closeGuest() {
   const modal = document.getElementById("guestModal");
   if (modal) modal.classList.add("hidden");
