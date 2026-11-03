@@ -989,3 +989,10 @@ body { overflow-wrap: anywhere; }
 .upsell-chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 4px; }
 .upsell-chip { display: inline-flex; align-items: center; gap: 6px; padding: 5px 6px 5px 12px; border-radius: 999px; background: var(--accent-soft); border: 1px solid var(--border); font-size: 13px; }
 .upsell-chip button { background: none; border: 0; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 6px; }
+
+/* Hari ini: pop-up dan kartu tamu yang tanggalnya hari ini */
+.today-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+.today-item:last-child { border-bottom: 0; }
+.today-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; font-size: 16px; }
+.today-bday .today-head strong { color: var(--accent); }
+.note.guest.is-today { box-shadow: 0 0 0 2px var(--accent); }
