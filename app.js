@@ -4,7 +4,7 @@
  * Change history is in CHANGELOG.md
  ****************************************/
 
-const APP_VERSION = "2.70.0";
+const APP_VERSION = "2.71.0";
 
 const HOME_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>';
 
@@ -1350,6 +1350,16 @@ function activeBulletins() {
   return newestFirst(appData.bulletin.filter(isActive));
 }
 
+/** Calendar: staff see active bulletins only. Editors also see inactive ones, so the date can be found again. */
+function calendarBulletins() {
+  return canEdit() ? appData.bulletin : appData.bulletin.filter(isActive);
+}
+
+/** Dot colour for a bulletin on the calendar. Inactive ones are grey. */
+function calendarColor(r) {
+  return isActive(r) ? bulletinColor(r.type) : "#8a8a8a";
+}
+
 /** Bulletin types: from the sheet, or defaults if the sheet is empty. */
 function bulletinTypeList() {
   const rows = (appData && appData.bulletinTypes || []).filter(r => r.type);
@@ -1400,7 +1410,7 @@ function bulletinCalendarHtml() {
   const todayIso = isoDate(now);
 
   const byDay = {};
-  activeBulletins().forEach(r => {
+  calendarBulletins().forEach(r => {
     const iso = isoFromSheetDate(r.date);
     if (iso) (byDay[iso] = byDay[iso] || []).push(r);
   });
@@ -1412,14 +1422,14 @@ function bulletinCalendarHtml() {
   for (let d = 1; d <= days; d++) {
     const iso = y + "-" + pad2(m + 1) + "-" + pad2(d);
     const list = byDay[iso] || [];
-    const dots = Array.from(new Set(list.map(r => bulletinColor(r.type))))
+    const dots = Array.from(new Set(list.map(calendarColor)))
       .map(c => '<i class="bc-dot" style="--tag:' + esc(c) + '"></i>').join("");
     const classes = "bc-cell" + (iso === todayIso ? " bc-today" : "") + (iso === bulletinDay ? " bc-picked" : "") + (list.length ? " bc-has" : "");
     // Hover (desktop only) shows the day's items floating over the calendar. Click still picks the day.
     const pop = list.length
       ? '<span class="bc-pop" role="tooltip">' + list.map(r =>
           '<span class="bc-pop-item"><span class="bc-pop-head"><span class="bl-tag" ' + bulletinStyle(r.type) + '>' + esc(r.type || "Info") + '</span>' +
-          '<b>' + esc(r.title) + '</b></span>' +
+          '<b>' + esc(r.title) + '</b>' + statusBadge(r, "bulletin") + '</span>' +
           (r.description ? '<span class="bc-pop-text">' + esc(clipText(String(r.description), 90)) + '</span>' : '') + '</span>'
         ).join("") + '</span>'
       : "";
@@ -1483,11 +1493,11 @@ function bulletinItem(r, compact) {
   const text = String(r.description || "");
   const more = text.length > 80;
   if (compact) {
-    return '<div class="bl-item bl-compact clickable' + (r.image ? ' bl-has-thumb' : '') + '" ' + bulletinStyle(r.type) + ' onclick="openDetail(\'bulletin\',' + r._row + ')">' +
+    return '<div class="bl-item bl-compact clickable' + (r.image ? ' bl-has-thumb' : '') + (isActive(r) ? '' : ' is-inactive') + '" ' + bulletinStyle(r.type) + ' onclick="openDetail(\'bulletin\',' + r._row + ')">' +
       (r.image ? '<img class="bl-thumb" src="' + imgUrl(r.image) + '" alt="" loading="lazy">' : '') +
       '<div class="bl-body">' +
         '<div class="bl-meta"><span class="bl-tag" ' + bulletinStyle(r.type) + '>' + esc(r.type || "Info") + '</span>' +
-        '<span class="small muted">' + esc(r.date) + '</span></div>' +
+        '<span class="small muted">' + esc(r.date) + '</span>' + statusBadge(r, "bulletin") + '</div>' +
         '<div class="note-title">' + esc(r.title) + '</div>' +
         (text ? '<p class="bl-text">' + esc(clipText(text, 80)) + '</p>' : '') +
         '<div class="bl-actions">' + editBtn("bulletin", r) + '</div>' +
@@ -1705,6 +1715,13 @@ function showForm(title, values, canDelete) {
     const shiftField = document.querySelector('#editForm select[data-key="shift"]');
     if (shiftField && shiftField.closest(".field")) shiftField.closest(".field").classList.add("hidden");
     upsellChipsSetup();
+  }
+  const statusField = document.querySelector('#editForm [data-key="status"]');
+  if (statusField && statusField.closest(".field") && !statusField.closest(".field").querySelector(".field-hint")) {
+    const hint = document.createElement("p");
+    hint.className = "field-hint small muted";
+    hint.innerText = "NOT ACTIVE hides it from staff. The data is kept, and you can set it back to ACTIVE later.";
+    statusField.closest(".field").appendChild(hint);
   }
   document.getElementById("editTitle").innerText = title;
   document.getElementById("editError").innerText = "";
@@ -2038,7 +2055,7 @@ async function saveForm() {
 
 async function deleteForm() {
   if (!formState || formState.mode !== "edit") return;
-  if (!confirm("Delete this row? Its content is logged in the changelog, but this cannot be undone in the app.")) return;
+  if (!confirm("Delete permanently? The row is removed from the sheet and cannot be restored from the app. Its content stays in the changelog.\n\nTo hide it instead, set Status to NOT ACTIVE.")) return;
 
   const sheetKey = formState.sheetKey;
   const row = formState.row;
